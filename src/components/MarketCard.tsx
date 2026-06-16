@@ -93,7 +93,7 @@ export default function MarketCard({ market, stats }: { market: Market; stats?: 
       <div className="flex items-center gap-4 text-xs text-ink-faint">
         <span className="inline-flex items-center gap-1">
           <BarChart3 size={13} />
-          {formatCompact(stats?.volume ?? 0)} vol
+          {`$${formatCompact(stats?.volume ?? 0)} vol`}
         </span>
         <span className="inline-flex items-center gap-1">
           <Users size={13} />

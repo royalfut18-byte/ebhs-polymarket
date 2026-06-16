@@ -93,14 +93,14 @@ export interface TradeResult {
   new_balance: number;
 }
 
-// A trade joined with the trader's profile (for the activity feed).
+// A trade joined with the trader's username (for the activity feed).
 export interface TradeWithProfile extends Trade {
-  profiles: Pick<Profile, "username" | "display_name"> | null;
+  profiles: Pick<Profile, "username"> | null;
 }
 
-// A comment joined with its author.
+// A comment joined with its author's username.
 export interface CommentWithProfile extends Comment {
-  profiles: Pick<Profile, "username" | "display_name"> | null;
+  profiles: Pick<Profile, "username"> | null;
 }
 
 // A position joined with its market (for the portfolio page).
@@ -111,4 +111,41 @@ export interface PositionWithMarket extends Position {
 // A trade joined with its market's question (for the trade-history list).
 export interface UserTradeRow extends Trade {
   markets: { question: string } | null;
+}
+
+// Private profile data — visible only to the user themselves and to admins.
+export interface ProfilePrivate {
+  user_id: string;
+  full_name: string;
+  instagram: string;
+  updated_at: string;
+}
+
+// Staff chat message joined with the sender's username.
+export interface AdminMessage {
+  id: string;
+  user_id: string | null;
+  body: string;
+  created_at: string;
+  profiles: Pick<Profile, "username"> | null;
+}
+
+// User-submitted market idea joined with the suggester's username.
+export interface MarketSuggestion {
+  id: string;
+  user_id: string | null;
+  question: string;
+  description: string;
+  created_at: string;
+  profiles: Pick<Profile, "username"> | null;
+}
+
+// Leaderboard prize configuration (freely editable by admins).
+export interface PrizeEntry {
+  place: string;
+  reward: string;
+}
+export interface Prizes {
+  title: string;
+  entries: PrizeEntry[];
 }

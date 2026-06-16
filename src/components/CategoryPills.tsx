@@ -6,13 +6,15 @@ import clsx from "clsx";
 export default function CategoryPills({
   active,
   onChange,
+  categories = [...CATEGORIES],
 }: {
   active: string;
   onChange: (c: string) => void;
+  categories?: string[];
 }) {
   return (
     <div className="flex items-center gap-2 overflow-x-auto pb-1">
-      {CATEGORIES.map((c) => (
+      {categories.map((c) => (
         <button
           key={c}
           onClick={() => onChange(c)}

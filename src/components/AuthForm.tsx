@@ -14,7 +14,8 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [instagram, setInstagram] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +34,7 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
         const res = await fetch("/api/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password, displayName }),
+          body: JSON.stringify({ username, password, fullName, instagram }),
         });
         const json = await res.json();
         if (!res.ok) {
@@ -92,21 +93,41 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
               required
-              placeholder="e.g. ashaz"
+              placeholder="Pick a username"
               className="input"
             />
+            {isSignup && (
+              <span className="text-xs text-ink-faint">
+                This is the only name other players see.
+              </span>
+            )}
           </label>
 
           {isSignup && (
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-ink-dim">Display name (optional)</span>
-              <input
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="How your name appears"
-                className="input"
-              />
-            </label>
+            <>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-ink-dim">Full name (optional)</span>
+                <input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Your real name"
+                  className="input"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-ink-dim">Instagram (optional)</span>
+                <input
+                  value={instagram}
+                  onChange={(e) => setInstagram(e.target.value)}
+                  placeholder="@yourhandle"
+                  className="input"
+                />
+                <span className="text-xs text-ink-faint">
+                  Private — only admins see this, used for claiming prizes. 🔒
+                </span>
+              </label>
+            </>
           )}
 
           <label className="flex flex-col gap-1">

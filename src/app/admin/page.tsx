@@ -2,15 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, ListChecks, ShieldCheck, Users } from "lucide-react";
+import {
+  Gift,
+  LayoutGrid,
+  Lightbulb,
+  ListChecks,
+  MessageSquare,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import CreateMarketForm from "@/components/admin/CreateMarketForm";
 import ManageMarkets from "@/components/admin/ManageMarkets";
 import ManageUsers from "@/components/admin/ManageUsers";
 import ManageSubadmins from "@/components/admin/ManageSubadmins";
+import ManageSuggestions from "@/components/admin/ManageSuggestions";
+import PrizesEditor from "@/components/admin/PrizesEditor";
+import AdminChat from "@/components/admin/AdminChat";
 import clsx from "clsx";
 
-type Tab = "create" | "markets" | "users" | "subadmins";
+type Tab = "create" | "markets" | "suggestions" | "users" | "subadmins" | "prizes" | "chat";
 
 export default function AdminPage() {
   const { isStaff, isAdmin, loading } = useAuth();
@@ -37,8 +48,11 @@ export default function AdminPage() {
   const tabs: { id: Tab; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
     { id: "create", label: "Create Market", icon: <LayoutGrid size={16} /> },
     { id: "markets", label: "Markets", icon: <ListChecks size={16} /> },
-    { id: "users", label: "Users", icon: <Users size={16} />, adminOnly: true },
+    { id: "suggestions", label: "Suggestions", icon: <Lightbulb size={16} /> },
+    { id: "users", label: "Users", icon: <Users size={16} /> },
     { id: "subadmins", label: "Sub-admins", icon: <ShieldCheck size={16} />, adminOnly: true },
+    { id: "prizes", label: "Prizes", icon: <Gift size={16} />, adminOnly: true },
+    { id: "chat", label: "Chat", icon: <MessageSquare size={16} /> },
   ];
   const visibleTabs = tabs.filter((t) => !t.adminOnly || isAdmin);
   const activeTab = visibleTabs.some((t) => t.id === tab) ? tab : "create";
@@ -52,7 +66,7 @@ export default function AdminPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Admin panel</h1>
           <p className="text-sm text-ink-dim">
-            {isAdmin ? "Full admin access." : "Sub-admin: manage markets."}
+            {isAdmin ? "Full admin access." : "Sub-admin: manage markets & view players."}
           </p>
         </div>
       </div>
@@ -76,8 +90,11 @@ export default function AdminPage() {
       <div>
         {activeTab === "create" && <CreateMarketForm />}
         {activeTab === "markets" && <ManageMarkets />}
-        {activeTab === "users" && isAdmin && <ManageUsers />}
+        {activeTab === "suggestions" && <ManageSuggestions />}
+        {activeTab === "users" && <ManageUsers />}
         {activeTab === "subadmins" && isAdmin && <ManageSubadmins />}
+        {activeTab === "prizes" && isAdmin && <PrizesEditor />}
+        {activeTab === "chat" && <AdminChat />}
       </div>
     </div>
   );

@@ -3,13 +3,17 @@
 
 import { getSupabase } from "./supabase/client";
 import type {
+  AdminMessage,
   CommentWithProfile,
   LeaderboardRow,
   Market,
   MarketStat,
+  MarketSuggestion,
   Position,
   PositionWithMarket,
+  Prizes,
   Profile,
+  ProfilePrivate,
   TradeWithProfile,
   UserTradeRow,
 } from "./types";
@@ -44,7 +48,7 @@ export async function fetchMarketTrades(marketId: string): Promise<TradeWithProf
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("trades")
-    .select("*, profiles(username, display_name)")
+    .select("*, profiles(username)")
     .eq("market_id", marketId)
     .order("created_at", { ascending: true });
   if (error) throw error;
@@ -52,18 +56,18 @@ export async function fetchMarketTrades(marketId: string): Promise<TradeWithProf
 }
 
 export async function fetchMarketHolders(marketId: string): Promise<
-  (Position & { profiles: Pick<Profile, "username" | "display_name"> | null })[]
+  (Position & { profiles: Pick<Profile, "username"> | null })[]
 > {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("positions")
-    .select("*, profiles(username, display_name)")
+    .select("*, profiles(username)")
     .eq("market_id", marketId)
     .order("shares", { ascending: false })
     .limit(20);
   if (error) throw error;
   return (data as unknown as (Position & {
-    profiles: Pick<Profile, "username" | "display_name"> | null;
+    profiles: Pick<Profile, "username"> | null;
   })[]) ?? [];
 }
 
@@ -105,7 +109,7 @@ export async function fetchComments(marketId: string): Promise<CommentWithProfil
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("comments")
-    .select("*, profiles(username, display_name)")
+    .select("*, profiles(username)")
     .eq("market_id", marketId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -120,4 +124,58 @@ export async function fetchAllProfiles(): Promise<Profile[]> {
     .order("created_at", { ascending: true });
   if (error) throw error;
   return (data as Profile[]) ?? [];
+}
+
+export async function fetchProfileByUsername(username: string): Promise<Profile | null> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("username", username.trim().toLowerCase())
+    .maybeSingle();
+  if (error) throw error;
+  return (data as Profile) ?? null;
+}
+
+// Private profile data (real name + Instagram). RLS returns all rows for admins,
+// only the caller's own row otherwise. Keyed by user_id.
+export async function fetchProfilesPrivate(): Promise<Record<string, ProfilePrivate>> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from("profiles_private").select("*");
+  if (error) throw error;
+  const map: Record<string, ProfilePrivate> = {};
+  for (const r of (data as ProfilePrivate[]) ?? []) map[r.user_id] = r;
+  return map;
+}
+
+export async function fetchPrizes(): Promise<Prizes | null> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("app_settings")
+    .select("value")
+    .eq("key", "leaderboard_prizes")
+    .maybeSingle();
+  if (error) throw error;
+  return ((data?.value as Prizes) ?? null) || null;
+}
+
+export async function fetchAdminMessages(): Promise<AdminMessage[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("admin_messages")
+    .select("*, profiles(username)")
+    .order("created_at", { ascending: true })
+    .limit(300);
+  if (error) throw error;
+  return (data as unknown as AdminMessage[]) ?? [];
+}
+
+export async function fetchMarketSuggestions(): Promise<MarketSuggestion[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("market_suggestions")
+    .select("*, profiles(username)")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as unknown as MarketSuggestion[]) ?? [];
 }

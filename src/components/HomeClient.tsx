@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Inbox } from "lucide-react";
 import { fetchMarkets, fetchMarketStats } from "@/lib/queries";
 import type { Market } from "@/lib/types";
+import { CATEGORIES } from "@/lib/categories";
 import MarketCard from "./MarketCard";
 import CategoryPills from "./CategoryPills";
 
@@ -18,6 +19,16 @@ export default function HomeClient() {
 
   const marketsQuery = useQuery({ queryKey: ["markets"], queryFn: fetchMarkets });
   const statsQuery = useQuery({ queryKey: ["market-stats"], queryFn: fetchMarketStats });
+
+  // Category pills = the presets, plus any custom categories that exist on markets.
+  const categoryList = useMemo(() => {
+    const all: Market[] = marketsQuery.data ?? [];
+    const preset = CATEGORIES as readonly string[];
+    const extras = Array.from(new Set(all.map((m) => m.category))).filter(
+      (c) => c && !preset.includes(c)
+    );
+    return [...preset, ...extras.sort()];
+  }, [marketsQuery.data]);
 
   const markets = useMemo(() => {
     const all: Market[] = marketsQuery.data ?? [];
@@ -45,11 +56,11 @@ export default function HomeClient() {
           {q ? <>Results for “{q}”</> : "Markets"}
         </h1>
         <p className="text-sm text-ink-dim">
-          Trade fake credits on EBHS questions. Prices are live probabilities — buying moves them.
+          Predict the future now on EBHS Polymarket to win prizes! 🏆
         </p>
       </div>
 
-      <CategoryPills active={category} onChange={setCategory} />
+      <CategoryPills active={category} onChange={setCategory} categories={categoryList} />
 
       {marketsQuery.isError ? (
         <ErrorState />

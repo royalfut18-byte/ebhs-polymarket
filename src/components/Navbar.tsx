@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Coins,
   LayoutDashboard,
+  Lightbulb,
   LogOut,
   Search,
   Shield,
@@ -14,7 +15,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useAuth } from "./AuthProvider";
-import { formatCredits } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import Avatar from "./Avatar";
 import Logo from "./Logo";
 
@@ -81,8 +82,7 @@ export default function Navbar() {
             <>
               <div className="hidden items-center gap-1.5 rounded-xl border border-border bg-bg-soft px-3 py-1.5 text-sm sm:flex">
                 <Coins size={15} className="text-yellow-400" />
-                <span className="font-semibold text-ink">{formatCredits(profile.balance)}</span>
-                <span className="text-ink-faint">cr</span>
+                <span className="font-semibold text-ink">{formatMoney(profile.balance)}</span>
               </div>
 
               {isStaff && (
@@ -101,7 +101,7 @@ export default function Navbar() {
                   className="flex items-center rounded-full ring-2 ring-transparent transition hover:ring-border"
                   aria-label="Account menu"
                 >
-                  <Avatar name={profile.display_name || profile.username} size={36} />
+                  <Avatar name={profile.username} size={36} />
                 </button>
 
                 {menuOpen && (
@@ -110,13 +110,11 @@ export default function Navbar() {
                     <div className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-border bg-bg-card shadow-card">
                       <div className="border-b border-border px-4 py-3">
                         <div className="truncate text-sm font-semibold text-ink">
-                          {profile.display_name || profile.username}
+                          @{profile.username}
                         </div>
-                        <div className="truncate text-xs text-ink-faint">@{profile.username}</div>
                         <div className="mt-2 flex items-center gap-1.5 text-sm sm:hidden">
                           <Coins size={14} className="text-yellow-400" />
-                          <span className="font-semibold">{formatCredits(profile.balance)}</span>
-                          <span className="text-ink-faint">credits</span>
+                          <span className="font-semibold">{formatMoney(profile.balance)}</span>
                         </div>
                       </div>
                       <MenuItem href="/portfolio" icon={<Wallet size={16} />} onClick={() => setMenuOpen(false)}>
@@ -124,6 +122,9 @@ export default function Navbar() {
                       </MenuItem>
                       <MenuItem href="/leaderboard" icon={<Trophy size={16} />} onClick={() => setMenuOpen(false)}>
                         Leaderboard
+                      </MenuItem>
+                      <MenuItem href="/suggest" icon={<Lightbulb size={16} />} onClick={() => setMenuOpen(false)}>
+                        Suggest a market
                       </MenuItem>
                       {isStaff && (
                         <MenuItem href="/admin" icon={<LayoutDashboard size={16} />} onClick={() => setMenuOpen(false)}>

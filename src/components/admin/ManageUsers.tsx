@@ -2,17 +2,27 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Instagram, Loader2 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
-import { fetchAllProfiles } from "@/lib/queries";
-import { formatCredits } from "@/lib/format";
-import type { Profile } from "@/lib/types";
+import { fetchAllProfiles, fetchProfilesPrivate } from "@/lib/queries";
+import { formatMoney } from "@/lib/format";
+import type { Profile, ProfilePrivate } from "@/lib/types";
 import Avatar from "@/components/Avatar";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function ManageUsers() {
+  const { isAdmin } = useAuth();
+
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["all-profiles"],
     queryFn: fetchAllProfiles,
+  });
+
+  // Private info (real name + Instagram) is admin-only.
+  const { data: privateMap = {} } = useQuery({
+    queryKey: ["profiles-private"],
+    queryFn: fetchProfilesPrivate,
+    enabled: isAdmin,
   });
 
   if (isLoading) {
@@ -20,26 +30,43 @@ export default function ManageUsers() {
   }
 
   return (
-    <div className="card overflow-x-auto">
-      <table className="w-full min-w-[560px] text-sm">
-        <thead>
-          <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-faint">
-            <th className="px-4 py-3 font-medium">User</th>
-            <th className="px-4 py-3 font-medium">Role</th>
-            <th className="px-4 py-3 font-medium">Balance (credits)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <UserRow key={u.id} user={u} />
-          ))}
-        </tbody>
-      </table>
+    <div className="flex flex-col gap-3">
+      {!isAdmin && (
+        <div className="rounded-xl border border-border bg-bg-soft p-3 text-sm text-ink-dim">
+          You can view players here. Adjusting balances, roles, and seeing private contact info is
+          admin-only.
+        </div>
+      )}
+      <div className="card overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-faint">
+              <th className="px-4 py-3 font-medium">User</th>
+              <th className="px-4 py-3 font-medium">Role</th>
+              {isAdmin && <th className="px-4 py-3 font-medium">Name / Instagram</th>}
+              <th className="px-4 py-3 font-medium">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <UserRow key={u.id} user={u} isAdmin={isAdmin} priv={privateMap[u.id]} />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
-function UserRow({ user }: { user: Profile }) {
+function UserRow({
+  user,
+  isAdmin,
+  priv,
+}: {
+  user: Profile;
+  isAdmin: boolean;
+  priv?: ProfilePrivate;
+}) {
   const supabase = getSupabase();
   const queryClient = useQueryClient();
   const [value, setValue] = useState(String(user.balance));
@@ -47,7 +74,6 @@ function UserRow({ user }: { user: Profile }) {
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const name = user.display_name || user.username;
   const dirty = Number(value) !== Number(user.balance);
 
   async function save() {
@@ -73,11 +99,8 @@ function UserRow({ user }: { user: Profile }) {
     <tr className="border-b border-border/60 last:border-0">
       <td className="px-4 py-3">
         <div className="flex items-center gap-2.5">
-          <Avatar name={name} size={30} />
-          <div className="min-w-0">
-            <div className="truncate font-medium text-ink">{name}</div>
-            <div className="truncate text-xs text-ink-faint">@{user.username}</div>
-          </div>
+          <Avatar name={user.username} size={30} />
+          <div className="min-w-0 font-medium text-ink">@{user.username}</div>
         </div>
       </td>
       <td className="px-4 py-3">
@@ -85,32 +108,50 @@ function UserRow({ user }: { user: Profile }) {
           {user.role}
         </span>
       </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="input w-32"
-          />
-          <button
-            onClick={save}
-            disabled={saving || !dirty}
-            className="btn btn-ghost px-2.5 py-1.5 text-xs"
-          >
-            {saving ? (
-              <Loader2 size={13} className="animate-spin" />
-            ) : saved ? (
-              <Check size={13} className="text-yes-text" />
-            ) : (
-              "Set"
-            )}
-          </button>
-          {!dirty && !saving && (
-            <span className="text-xs text-ink-faint">{formatCredits(user.balance)}</span>
+      {isAdmin && (
+        <td className="px-4 py-3 text-sm">
+          <div className="text-ink">{priv?.full_name?.trim() || <span className="text-ink-faint">—</span>}</div>
+          {priv?.instagram?.trim() ? (
+            <a
+              href={`https://instagram.com/${priv.instagram.replace(/^@+/, "")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-brand hover:underline"
+            >
+              <Instagram size={12} /> @{priv.instagram.replace(/^@+/, "")}
+            </a>
+          ) : (
+            <span className="text-xs text-ink-faint">no Instagram</span>
           )}
-        </div>
-        {err && <div className="mt-1 text-xs text-no-text">{err}</div>}
+        </td>
+      )}
+      <td className="px-4 py-3">
+        {isAdmin ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              className="input w-32"
+            />
+            <button
+              onClick={save}
+              disabled={saving || !dirty}
+              className="btn btn-ghost px-2.5 py-1.5 text-xs"
+            >
+              {saving ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : saved ? (
+                <Check size={13} className="text-yes-text" />
+              ) : (
+                "Set"
+              )}
+            </button>
+            {err && <span className="text-xs text-no-text">{err}</span>}
+          </div>
+        ) : (
+          <span className="text-ink">{formatMoney(user.balance)}</span>
+        )}
       </td>
     </tr>
   );

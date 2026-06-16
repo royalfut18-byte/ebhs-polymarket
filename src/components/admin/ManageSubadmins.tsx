@@ -89,20 +89,18 @@ export default function ManageSubadmins() {
 }
 
 function Row({ user, children }: { user: Profile; children: React.ReactNode }) {
-  const name = user.display_name || user.username;
   return (
     <div className="flex items-center gap-3 px-4 py-3">
-      <Avatar name={name} size={34} />
+      <Avatar name={user.username} size={34} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate font-medium text-ink">{name}</span>
+          <span className="truncate font-medium text-ink">@{user.username}</span>
           {user.role === "subadmin" && (
             <span className="rounded-full bg-bg-hover px-2 py-0.5 text-xs font-medium text-ink-dim">
               sub-admin
             </span>
           )}
         </div>
-        <div className="truncate text-xs text-ink-faint">@{user.username}</div>
       </div>
       <div className="shrink-0">{children}</div>
     </div>

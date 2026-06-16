@@ -70,13 +70,13 @@ export default function Comments({ marketId }: { marketId: string }) {
       ) : (
         <ul className="flex flex-col gap-3">
           {comments.map((c) => {
-            const name = c.profiles?.display_name || c.profiles?.username || "Someone";
+            const username = c.profiles?.username || "someone";
             return (
               <li key={c.id} className="flex gap-3">
-                <Avatar name={name} size={32} />
+                <Avatar name={username} size={32} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-semibold text-ink">{name}</span>
+                    <span className="text-sm font-semibold text-ink">@{username}</span>
                     <span className="text-xs text-ink-faint">{timeAgo(c.created_at)}</span>
                   </div>
                   <p className="whitespace-pre-wrap break-words text-sm text-ink-dim">{c.body}</p>

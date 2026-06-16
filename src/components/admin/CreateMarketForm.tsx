@@ -82,14 +82,19 @@ export default function CreateMarketForm() {
       </Field>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Category">
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className="input">
+        <Field label="Category" hint="Pick a preset or type a brand-new category.">
+          <input
+            list="market-categories"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="Category"
+            className="input"
+          />
+          <datalist id="market-categories">
             {MARKET_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
+              <option key={c} value={c} />
             ))}
-          </select>
+          </datalist>
         </Field>
         <Field label="Image URL or emoji (optional)">
           <input

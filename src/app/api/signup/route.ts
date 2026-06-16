@@ -9,7 +9,12 @@ import { getAdminClient } from "@/lib/supabase/admin";
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 
 export async function POST(req: Request) {
-  let payload: { username?: string; password?: string; displayName?: string };
+  let payload: {
+    username?: string;
+    password?: string;
+    fullName?: string;
+    instagram?: string;
+  };
   try {
     payload = await req.json();
   } catch {
@@ -18,7 +23,9 @@ export async function POST(req: Request) {
 
   const username = (payload.username ?? "").trim().toLowerCase();
   const password = payload.password ?? "";
-  const displayName = (payload.displayName ?? "").trim() || username;
+  const fullName = (payload.fullName ?? "").trim();
+  // normalise instagram: strip a leading "@" if present
+  const instagram = (payload.instagram ?? "").trim().replace(/^@+/, "");
 
   if (!USERNAME_RE.test(username)) {
     return NextResponse.json(
@@ -60,7 +67,7 @@ export async function POST(req: Request) {
     email,
     password,
     email_confirm: true,
-    user_metadata: { username, display_name: displayName },
+    user_metadata: { username, full_name: fullName, instagram },
   });
 
   if (error) {

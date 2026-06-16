@@ -95,7 +95,7 @@ async function ensureAdmin() {
     email,
     password: ADMIN.password,
     email_confirm: true,
-    user_metadata: { username: ADMIN.username, display_name: ADMIN.display },
+    user_metadata: { username: ADMIN.username, full_name: ADMIN.display, instagram: "" },
   });
 
   if (error) {

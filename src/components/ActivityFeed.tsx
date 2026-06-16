@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import type { TradeWithProfile } from "@/lib/types";
-import { formatCredits, formatShares, timeAgo, toCents } from "@/lib/format";
+import { formatMoney, formatShares, timeAgo, toCents } from "@/lib/format";
 import Avatar from "./Avatar";
 import clsx from "clsx";
 
@@ -15,22 +16,32 @@ export default function ActivityFeed({ trades }: { trades: TradeWithProfile[] })
   return (
     <ul className="divide-y divide-border">
       {rows.map((t) => {
-        const name = t.profiles?.display_name || t.profiles?.username || "Someone";
+        const username = t.profiles?.username || "someone";
         const avg = t.shares > 0 ? t.cost / t.shares : 0;
         const isYes = t.outcome === "yes";
+        const isBuy = t.side === "buy";
         return (
           <li key={t.id} className="flex items-center gap-3 py-2.5">
-            <Avatar name={name} size={30} />
+            <Avatar name={username} size={30} />
             <div className="min-w-0 flex-1 text-sm">
-              <span className="font-medium text-ink">{name}</span>{" "}
-              <span className="text-ink-dim">{t.side === "buy" ? "bought" : "sold"}</span>{" "}
+              <Link href={`/u/${username}`} className="font-medium text-ink hover:text-brand">
+                @{username}
+              </Link>{" "}
+              <span
+                className={clsx(
+                  "rounded px-1.5 py-0.5 text-[11px] font-bold uppercase",
+                  isBuy ? "bg-brand/15 text-brand" : "bg-yellow-500/15 text-yellow-300"
+                )}
+              >
+                {isBuy ? "Buy" : "Sell"}
+              </span>{" "}
               <span className={clsx("font-semibold", isYes ? "text-yes-text" : "text-no-text")}>
                 {formatShares(t.shares)} {t.outcome.toUpperCase()}
               </span>{" "}
               <span className="text-ink-dim">@ {toCents(avg)}</span>
             </div>
             <div className="shrink-0 text-right text-xs">
-              <div className="font-medium text-ink">{formatCredits(t.cost)} cr</div>
+              <div className="font-medium text-ink">{formatMoney(t.cost)}</div>
               <div className="text-ink-faint">{timeAgo(t.created_at)}</div>
             </div>
           </li>

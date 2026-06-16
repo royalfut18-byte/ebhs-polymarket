@@ -16,13 +16,18 @@ export function clamp01(n: number): number {
   return n;
 }
 
-/** Play-money credits, e.g. 1234.5 -> "1,234.50". */
+/** Play-money amount, e.g. 1234.5 -> "1,234.50". */
 export function formatCredits(n: number, digits = 2): string {
   if (n === null || n === undefined || isNaN(n)) return "0";
   return n.toLocaleString("en-US", {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
+}
+
+/** Play-money amount with the $ symbol, e.g. 1234.5 -> "$1,234.50". (Still fake money.) */
+export function formatMoney(n: number, digits = 2): string {
+  return `$${formatCredits(n, digits)}`;
 }
 
 /** Compact number, e.g. 12000 -> "12K". */

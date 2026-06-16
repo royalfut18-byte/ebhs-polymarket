@@ -8,7 +8,7 @@ import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { getSupabase } from "@/lib/supabase/client";
 import { priceYes, quoteTrade } from "@/lib/lmsr";
-import { formatCredits, formatShares, toCents } from "@/lib/format";
+import { formatMoney, formatShares, toCents } from "@/lib/format";
 import type { Market, Outcome, Position, TradeSide } from "@/lib/types";
 import StatusBadge from "./StatusBadge";
 import clsx from "clsx";
@@ -92,8 +92,8 @@ export default function TradePanel({ market }: { market: Market }) {
       kind: "ok",
       text:
         side === "buy"
-          ? `Bought ${formatShares(result.shares)} ${outcome.toUpperCase()} shares for ${formatCredits(result.cost)} credits.`
-          : `Sold ${formatShares(effectiveValue)} ${outcome.toUpperCase()} shares for ${formatCredits(result.cost)} credits.`,
+          ? `Bought ${formatShares(result.shares)} ${outcome.toUpperCase()} shares for ${formatMoney(result.cost)}.`
+          : `Sold ${formatShares(effectiveValue)} ${outcome.toUpperCase()} shares for ${formatMoney(result.cost)}.`,
     });
     setAmount("");
     await refreshProfile();
@@ -181,7 +181,7 @@ export default function TradePanel({ market }: { market: Market }) {
           {/* Amount input */}
           <div>
             <div className="mb-1.5 flex items-center justify-between text-xs text-ink-dim">
-              <span>{side === "buy" ? "Amount (credits)" : "Shares to sell"}</span>
+              <span>{side === "buy" ? "Amount ($)" : "Shares to sell"}</span>
               {side === "sell" && (
                 <span>
                   You hold {formatShares(heldShares)} {outcome.toUpperCase()}
@@ -230,13 +230,13 @@ export default function TradePanel({ market }: { market: Market }) {
                 <Row label="Shares" value={formatShares(quote.shares)} />
                 <Row
                   label="Potential payout"
-                  value={`${formatCredits(quote.payout)} cr`}
+                  value={formatMoney(quote.payout)}
                   hint={`if ${outcome.toUpperCase()} wins`}
                   accent
                 />
               </>
             ) : (
-              <Row label="You receive" value={`${formatCredits(quote.proceeds)} cr`} accent />
+              <Row label="You receive" value={formatMoney(quote.proceeds)} accent />
             )}
             <Row
               label="Price impact"
@@ -247,7 +247,7 @@ export default function TradePanel({ market }: { market: Market }) {
 
           {/* Validation / result message */}
           {insufficientFunds && (
-            <Notice kind="err">Insufficient balance — you have {formatCredits(balance)} credits.</Notice>
+            <Notice kind="err">Insufficient balance — you have {formatMoney(balance)}.</Notice>
           )}
           {noShares && <Notice kind="err">You don&apos;t own any {outcome.toUpperCase()} shares.</Notice>}
           {oversell && !noShares && (
@@ -291,7 +291,7 @@ export default function TradePanel({ market }: { market: Market }) {
           )}
 
           <div className="text-center text-xs text-ink-faint">
-            Balance: {formatCredits(balance)} credits (play money)
+            Balance: {formatMoney(balance)} (play money)
           </div>
         </>
       )}

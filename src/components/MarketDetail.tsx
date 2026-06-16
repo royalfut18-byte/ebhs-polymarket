@@ -85,7 +85,7 @@ export default function MarketDetail({ id }: { id: string }) {
           <h1 className="text-xl font-bold leading-tight sm:text-2xl">{market.question}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-faint">
             <span className="inline-flex items-center gap-1">
-              <BarChart3 size={13} /> {formatCompact(stats.volume)} credits volume
+              <BarChart3 size={13} /> {`$${formatCompact(stats.volume)} volume`}
             </span>
             <span className="inline-flex items-center gap-1">
               <Users size={13} /> {stats.traders} traders

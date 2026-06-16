@@ -6,7 +6,9 @@ import { Wallet } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { fetchUserPositions, fetchUserTrades } from "@/lib/queries";
 import { priceOf } from "@/lib/lmsr";
-import { formatCredits, formatShares, timeAgo, toCents } from "@/lib/format";
+import { formatMoney, formatShares, timeAgo, toCents } from "@/lib/format";
+
+const signedMoney = (n: number) => `${n >= 0 ? "+" : "-"}${formatMoney(Math.abs(n))}`;
 import type { PositionWithMarket } from "@/lib/types";
 import clsx from "clsx";
 
@@ -59,12 +61,12 @@ export default function PortfolioPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Net worth" value={`${formatCredits(netWorth)} cr`} />
-        <Stat label="Cash balance" value={`${formatCredits(profile.balance)} cr`} />
-        <Stat label="Positions value" value={`${formatCredits(positionsValue)} cr`} />
+        <Stat label="Net worth" value={formatMoney(netWorth)} />
+        <Stat label="Cash balance" value={formatMoney(profile.balance)} />
+        <Stat label="Positions value" value={formatMoney(positionsValue)} />
         <Stat
           label="Open P/L"
-          value={`${totalPnl >= 0 ? "+" : ""}${formatCredits(totalPnl)} cr`}
+          value={signedMoney(totalPnl)}
           tone={totalPnl >= 0 ? "up" : "down"}
         />
       </div>
@@ -121,15 +123,14 @@ export default function PortfolioPage() {
                     <td className="px-4 py-3 text-right">{formatShares(p.shares)}</td>
                     <td className="px-4 py-3 text-right text-ink-dim">{toCents(p.avg_price)}</td>
                     <td className="px-4 py-3 text-right">{toCents(price)}</td>
-                    <td className="px-4 py-3 text-right font-medium">{formatCredits(value)}</td>
+                    <td className="px-4 py-3 text-right font-medium">{formatMoney(value)}</td>
                     <td
                       className={clsx(
                         "px-4 py-3 text-right font-semibold",
                         pnl >= 0 ? "text-yes-text" : "text-no-text"
                       )}
                     >
-                      {pnl >= 0 ? "+" : ""}
-                      {formatCredits(pnl)}
+                      {signedMoney(pnl)}
                     </td>
                   </tr>
                 ))}
@@ -167,7 +168,7 @@ export default function PortfolioPage() {
                   </span>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div className="font-medium">{formatCredits(t.cost)} cr</div>
+                  <div className="font-medium">{formatMoney(t.cost)}</div>
                   <div className="text-xs text-ink-faint">{timeAgo(t.created_at)}</div>
                 </div>
               </div>
