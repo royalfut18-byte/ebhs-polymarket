@@ -1,0 +1,114 @@
+// Domain types shared across the app. These mirror the Postgres schema in
+// supabase/migrations/0001_init.sql. All currency is FAKE play money.
+
+export type Role = "admin" | "subadmin" | "user";
+export type MarketStatus = "open" | "closed" | "resolved" | "cancelled";
+export type Outcome = "yes" | "no";
+export type TradeSide = "buy" | "sell";
+
+export interface Profile {
+  id: string;
+  username: string;
+  display_name: string;
+  role: Role;
+  balance: number;
+  created_at: string;
+}
+
+export interface Market {
+  id: string;
+  question: string;
+  description: string;
+  category: string;
+  image_url: string | null;
+  created_by: string | null;
+  status: MarketStatus;
+  resolution: Outcome | null;
+  b: number;
+  q_yes: number;
+  q_no: number;
+  initial_prob: number;
+  close_at: string | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export interface Position {
+  id: string;
+  user_id: string;
+  market_id: string;
+  outcome: Outcome;
+  shares: number;
+  avg_price: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Trade {
+  id: string;
+  user_id: string | null;
+  market_id: string;
+  outcome: Outcome;
+  side: TradeSide;
+  shares: number;
+  cost: number;
+  price_before: number;
+  price_after: number;
+  created_at: string;
+}
+
+export interface Comment {
+  id: string;
+  market_id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+}
+
+export interface MarketStat {
+  market_id: string;
+  volume: number;
+  trade_count: number;
+  trader_count: number;
+}
+
+export interface LeaderboardRow {
+  id: string;
+  username: string;
+  display_name: string;
+  role: Role;
+  balance: number;
+  net_worth: number;
+}
+
+// Result returned by the execute_trade RPC.
+export interface TradeResult {
+  side: TradeSide;
+  outcome: Outcome;
+  shares: number;
+  cost: number;
+  avg_price: number;
+  price_before: number;
+  price_after: number;
+  new_balance: number;
+}
+
+// A trade joined with the trader's profile (for the activity feed).
+export interface TradeWithProfile extends Trade {
+  profiles: Pick<Profile, "username" | "display_name"> | null;
+}
+
+// A comment joined with its author.
+export interface CommentWithProfile extends Comment {
+  profiles: Pick<Profile, "username" | "display_name"> | null;
+}
+
+// A position joined with its market (for the portfolio page).
+export interface PositionWithMarket extends Position {
+  markets: Market | null;
+}
+
+// A trade joined with its market's question (for the trade-history list).
+export interface UserTradeRow extends Trade {
+  markets: { question: string } | null;
+}

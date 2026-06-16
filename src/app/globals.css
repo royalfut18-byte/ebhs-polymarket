@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+}
+
+@layer base {
+  html,
+  body {
+    background-color: #0d0d12;
+    color: #f5f5f7;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100vh;
+  }
+
+  /* Dark, slim scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #2a2a37 transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: #2a2a37;
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* Range slider (initial-odds control in the admin panel) */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 999px;
+    background: #23232e;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #2d7ff9;
+    cursor: pointer;
+    border: 3px solid #0d0d12;
+    box-shadow: 0 0 0 1px #2d7ff9;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #2d7ff9;
+    cursor: pointer;
+    border: 3px solid #0d0d12;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-border bg-bg-card shadow-card;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-yes {
+    @apply bg-yes/15 text-yes-text hover:bg-yes/25;
+  }
+  .btn-no {
+    @apply bg-no/15 text-no-text hover:bg-no/25;
+  }
+  .btn-primary {
+    @apply bg-brand text-white hover:bg-brand-dark;
+  }
+  .btn-ghost {
+    @apply border border-border text-ink hover:bg-bg-hover;
+  }
+  .input {
+    @apply w-full rounded-xl border border-border bg-bg-soft px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand;
+  }
+  .pill {
+    @apply whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors;
+  }
+}
+
+/* Hide number-input spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
