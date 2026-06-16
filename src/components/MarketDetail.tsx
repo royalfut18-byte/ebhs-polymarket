@@ -14,6 +14,7 @@ import ActivityFeed from "./ActivityFeed";
 import Holders from "./Holders";
 import Comments from "./Comments";
 import StatusBadge from "./StatusBadge";
+import { FadeIn } from "./motion";
 import clsx from "clsx";
 
 type Tab = "activity" | "holders" | "comments";
@@ -62,7 +63,7 @@ export default function MarketDetail({ id }: { id: string }) {
   const isUrl = img && /^https?:\/\//i.test(img);
 
   return (
-    <div className="flex flex-col gap-5">
+    <FadeIn className="flex flex-col gap-5">
       <Link href="/" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-dim hover:text-ink">
         <ArrowLeft size={16} /> Markets
       </Link>
@@ -141,6 +142,6 @@ export default function MarketDetail({ id }: { id: string }) {
           <TradePanel market={market} />
         </div>
       </div>
-    </div>
+    </FadeIn>
   );
 }

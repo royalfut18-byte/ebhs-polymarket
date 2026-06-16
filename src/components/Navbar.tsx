@@ -42,7 +42,7 @@ export default function Navbar() {
   }, [q]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-border bg-bg/60 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:gap-4 sm:px-6">
         <Logo />
 
@@ -80,8 +80,8 @@ export default function Navbar() {
             <div className="h-9 w-24 animate-pulse rounded-xl bg-bg-hover" />
           ) : profile ? (
             <>
-              <div className="hidden items-center gap-1.5 rounded-xl border border-border bg-bg-soft px-3 py-1.5 text-sm sm:flex">
-                <Coins size={15} className="text-yellow-400" />
+              <div className="hidden items-center gap-1.5 rounded-xl border border-yellow-400/20 bg-yellow-400/[0.07] px-3 py-1.5 text-sm shadow-[0_0_18px_-8px_rgba(250,204,21,0.6)] sm:flex">
+                <Coins size={15} className="text-yellow-300" />
                 <span className="font-semibold text-ink">{formatMoney(profile.balance)}</span>
               </div>
 

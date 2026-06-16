@@ -31,3 +31,4 @@ yarn-error.log*
 
 # claude code local settings (personal, not for the repo)
 .claude/settings.local.json
+.claude/launch.json

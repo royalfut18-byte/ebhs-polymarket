@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, TrendingUp } from "lucide-react";
 import { getSupabase, usernameToEmail } from "@/lib/supabase/client";
 import { useAuth } from "./AuthProvider";
+import { FadeIn } from "./motion";
 
 export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
@@ -69,7 +70,7 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const isSignup = mode === "signup";
 
   return (
-    <div className="mx-auto mt-10 w-full max-w-sm">
+    <FadeIn className="mx-auto mt-12 w-full max-w-sm">
       <div className="card p-6">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
           <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand text-white">
@@ -173,6 +174,6 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
           )}
         </div>
       </div>
-    </div>
+    </FadeIn>
   );
 }

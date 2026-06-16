@@ -64,15 +64,15 @@ export default function PriceChart({ market, trades }: { market: Market; trades:
           <AreaChart data={data} margin={{ top: 5, right: 8, left: -22, bottom: 0 }}>
             <defs>
               <linearGradient id="yesGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#27ae60" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="#27ae60" stopOpacity={0} />
+                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.4} />
+                <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#23232e" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" vertical={false} />
             <XAxis
               dataKey="label"
               tick={{ fill: "#6b6b78", fontSize: 11 }}
-              axisLine={{ stroke: "#23232e" }}
+              axisLine={{ stroke: "rgba(255,255,255,0.07)" }}
               tickLine={false}
               minTickGap={40}
             />
@@ -86,10 +86,10 @@ export default function PriceChart({ market, trades }: { market: Market; trades:
             />
             <Tooltip
               contentStyle={{
-                background: "#16161f",
-                border: "1px solid #23232e",
+                background: "#13131d",
+                border: "1px solid rgba(255,255,255,0.12)",
                 borderRadius: 12,
-                color: "#f5f5f7",
+                color: "#f4f4f7",
                 fontSize: 12,
               }}
               labelStyle={{ color: "#a1a1ac" }}
@@ -98,10 +98,11 @@ export default function PriceChart({ market, trades }: { market: Market; trades:
             <Area
               type="monotone"
               dataKey="price"
-              stroke="#27ae60"
-              strokeWidth={2}
+              stroke="#22c55e"
+              strokeWidth={2.5}
               fill="url(#yesGradient)"
-              isAnimationActive={false}
+              isAnimationActive
+              animationDuration={700}
               dot={false}
             />
           </AreaChart>

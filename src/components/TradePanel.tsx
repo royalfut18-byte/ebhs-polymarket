@@ -259,11 +259,11 @@ export default function TradePanel({ market }: { market: Market }) {
             onClick={submit}
             disabled={!canSubmit}
             className={clsx(
-              "btn w-full",
+              "btn w-full py-3 text-[15px]",
               side === "buy"
                 ? outcome === "yes"
-                  ? "bg-yes text-white hover:bg-yes/90"
-                  : "bg-no text-white hover:bg-no/90"
+                  ? "bg-yes text-white shadow-[0_12px_32px_-12px_rgba(34,197,94,0.8)] hover:brightness-110"
+                  : "bg-no text-white shadow-[0_12px_32px_-12px_rgba(244,63,94,0.8)] hover:brightness-110"
                 : "btn-primary"
             )}
           >
