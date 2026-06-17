@@ -8,7 +8,7 @@ import { Flame, Inbox, Lightbulb, Sparkles, TrendingUp } from "lucide-react";
 import { fetchMarkets, fetchMarketStats } from "@/lib/queries";
 import type { Market, MarketStat, MarketStatus } from "@/lib/types";
 import { formatCompact, toCents, toPercent } from "@/lib/format";
-import { priceYes } from "@/lib/lmsr";
+import { displayPriceYes } from "@/lib/lmsr";
 import MarketCard from "./MarketCard";
 import GroupedMarketCard from "./GroupedMarketCard";
 import CategoryPills from "./CategoryPills";
@@ -224,7 +224,7 @@ export default function HomeClient() {
 function FeaturedMarket({ market, stats }: { market: Market; stats?: MarketStat }) {
   const router = useRouter();
   const emojiOf = useCategoryEmoji();
-  const pYes = priceYes(market.q_yes, market.q_no, market.b);
+  const pYes = displayPriceYes(market);
   const pNo = 1 - pYes;
   const img = market.image_url?.trim();
   const isUrl = img && /^https?:\/\//i.test(img);

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Market, Position, Profile } from "@/lib/types";
-import { priceOf } from "@/lib/lmsr";
+import { displayPriceOf } from "@/lib/lmsr";
 import { formatMoney, formatShares, signedMoney } from "@/lib/format";
 import Avatar from "./Avatar";
 import clsx from "clsx";
@@ -19,7 +19,7 @@ export default function Holders({ holders, market }: { holders: HolderRow[]; mar
       {holders.map((h) => {
         const username = h.profiles?.username || "someone";
         const isYes = h.outcome === "yes";
-        const price = priceOf(h.outcome, market.q_yes, market.q_no, market.b);
+        const price = displayPriceOf(h.outcome, market);
         const value = h.shares * price;
         const pnl = value - h.shares * h.avg_price;
         const up = pnl >= 0;

@@ -7,7 +7,7 @@
 // Because winnings from resolved markets land back in the cash balance, the
 // "net worth − starting stake" figure captures realized AND unrealized P/L.
 
-import { priceOf } from "./lmsr";
+import { displayPriceOf } from "./lmsr";
 import type { Market, PositionWithMarket } from "./types";
 
 export const STARTING_BALANCE = 1000;
@@ -27,7 +27,7 @@ export function enrichPositions(positions: PositionWithMarket[]): EnrichedPositi
     .filter((p): p is PositionWithMarket & { markets: Market } => !!p.markets)
     .map((p) => {
       const m = p.markets as Market;
-      const price = priceOf(p.outcome, m.q_yes, m.q_no, m.b);
+      const price = displayPriceOf(p.outcome, m);
       const value = p.shares * price;
       const basis = p.shares * p.avg_price;
       const pnl = value - basis;

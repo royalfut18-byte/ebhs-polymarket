@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { getSupabase } from "@/lib/supabase/client";
-import { isClosedForTrading, priceYes, quoteTrade } from "@/lib/lmsr";
+import { displayPriceYes, isClosedForTrading, quoteTrade } from "@/lib/lmsr";
 import { formatMoney, formatShares, toCents } from "@/lib/format";
 import type { Market, Outcome, Position, TradeSide } from "@/lib/types";
 import StatusBadge from "./StatusBadge";
@@ -48,7 +48,9 @@ export default function TradePanel({ market }: { market: Market }) {
   const held = outcome === "yes" ? heldYes : heldNo;
   const heldShares = held?.shares ?? 0;
 
-  const pYes = priceYes(market.q_yes, market.q_no, market.b);
+  // Resolution-aware: a resolved market shows the winner at 100¢ / loser at 0¢,
+  // not the frozen last LMSR price.
+  const pYes = displayPriceYes(market);
   const pNo = 1 - pYes;
   const isGrouped = !!market.option_label;
   const tradable = !isClosedForTrading(market);
