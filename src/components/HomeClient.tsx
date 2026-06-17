@@ -2,17 +2,17 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Flame, Inbox, Lightbulb, Sparkles, TrendingUp } from "lucide-react";
 import { fetchMarkets, fetchMarketStats } from "@/lib/queries";
-import type { Market } from "@/lib/types";
-import { formatCompact, toPercent } from "@/lib/format";
+import type { Market, MarketStat } from "@/lib/types";
+import { formatCompact, toCents, toPercent } from "@/lib/format";
 import { priceYes } from "@/lib/lmsr";
 import MarketCard from "./MarketCard";
 import CategoryPills from "./CategoryPills";
-import { useCategories } from "./useCategories";
-import { AnimatedNumber, FadeIn, Stagger, StaggerItem } from "./motion";
+import { useCategories, useCategoryEmoji } from "./useCategories";
+import { AnimatedNumber, FadeIn, Stagger, StaggerItem, motion } from "./motion";
 import clsx from "clsx";
 
 const STATUS_RANK: Record<string, number> = { open: 0, closed: 1, resolved: 2, cancelled: 3 };
@@ -85,58 +85,40 @@ export default function HomeClient() {
           <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-white/[0.05] via-white/[0.02] to-transparent p-7 sm:p-10">
             <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 animate-float rounded-full bg-brand/20 blur-3xl" />
             <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-accent-violet/15 blur-3xl" />
-            <div className="relative max-w-2xl">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white/[0.04] px-3 py-1 text-xs font-medium text-ink-dim">
-                <Sparkles size={13} className="text-brand-light" /> Play-money prediction market
-              </span>
-              <h1 className="mt-4 text-3xl font-bold leading-[1.1] tracking-tight sm:text-5xl">
-                Predict the future. <br className="hidden sm:block" />
-                <span className="text-gradient">Win prizes.</span>
-              </h1>
-              <p className="mt-3 max-w-lg text-sm text-ink-dim sm:text-base">
-                Trade YES/NO on everything happening at EBHS. Prices are live probabilities — your
-                trades move the market. Climb the leaderboard. 🏆
-              </p>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <a href="#markets" className="btn btn-primary">
-                  <TrendingUp size={16} /> Browse markets
-                </a>
-                <Link href="/suggest" className="btn btn-ghost">
-                  <Lightbulb size={16} /> Suggest a market
-                </Link>
-                {trending && (
-                  <Link
-                    href={`/market/${trending.id}`}
-                    className="group inline-flex items-center gap-2.5 rounded-xl border border-orange-400/30 bg-orange-400/[0.08] px-3 py-1.5 transition-colors hover:bg-orange-400/[0.16]"
-                  >
-                    <Flame size={16} className="shrink-0 animate-pulse text-orange-400" />
-                    <div className="min-w-0 text-left">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-orange-300">
-                        🔥 Trending
-                      </div>
-                      <div className="max-w-[170px] truncate text-sm font-semibold text-ink group-hover:text-white">
-                        {trending.question}
-                      </div>
-                    </div>
-                    <span
-                      className={clsx(
-                        "ml-1 shrink-0 text-sm font-bold",
-                        priceYes(trending.q_yes, trending.q_no, trending.b) >= 0.5
-                          ? "text-yes-text"
-                          : "text-no-text"
-                      )}
-                    >
-                      {toPercent(priceYes(trending.q_yes, trending.q_no, trending.b))}
-                    </span>
+            <div
+              className={clsx(
+                "relative grid items-center gap-8",
+                trending && "lg:grid-cols-[1fr_minmax(0,380px)]"
+              )}
+            >
+              <div className="max-w-2xl">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white/[0.04] px-3 py-1 text-xs font-medium text-ink-dim">
+                  <Sparkles size={13} className="text-brand-light" /> Play-money prediction market
+                </span>
+                <h1 className="mt-4 text-3xl font-bold leading-[1.1] tracking-tight sm:text-5xl">
+                  Predict the future. <br className="hidden sm:block" />
+                  <span className="text-gradient">Win prizes.</span>
+                </h1>
+                <p className="mt-3 max-w-lg text-sm text-ink-dim sm:text-base">
+                  Trade YES/NO on everything happening at EBHS. Prices are live probabilities — your
+                  trades move the market. Climb the leaderboard. 🏆
+                </p>
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <a href="#markets" className="btn btn-primary">
+                    <TrendingUp size={16} /> Browse markets
+                  </a>
+                  <Link href="/suggest" className="btn btn-ghost">
+                    <Lightbulb size={16} /> Suggest a market
                   </Link>
-                )}
+                </div>
+                <div className="mt-8 flex gap-8">
+                  <Stat label="Markets" value={totals.markets} />
+                  <Stat label="Volume" value={totals.volume} prefix="$" compact />
+                  <Stat label="Trades" value={totals.trades} />
+                </div>
               </div>
 
-              <div className="mt-8 flex gap-8">
-                <Stat label="Markets" value={totals.markets} />
-                <Stat label="Volume" value={totals.volume} prefix="$" compact />
-                <Stat label="Trades" value={totals.trades} />
-              </div>
+              {trending && <FeaturedMarket market={trending} stats={statsMap[trending.id]} />}
             </div>
           </section>
         </FadeIn>
@@ -168,6 +150,96 @@ export default function HomeClient() {
         )}
       </div>
     </div>
+  );
+}
+
+function FeaturedMarket({ market, stats }: { market: Market; stats?: MarketStat }) {
+  const router = useRouter();
+  const emojiOf = useCategoryEmoji();
+  const pYes = priceYes(market.q_yes, market.q_no, market.b);
+  const pNo = 1 - pYes;
+  const img = market.image_url?.trim();
+  const isUrl = img && /^https?:\/\//i.test(img);
+  const tradable = market.status === "open";
+  const href = `/market/${market.id}`;
+  const go = (o?: "yes" | "no") => router.push(o ? `${href}?o=${o}` : href);
+
+  return (
+    <motion.div
+      onClick={() => go()}
+      whileHover={{ y: -4 }}
+      transition={{ type: "spring", stiffness: 300, damping: 22 }}
+      className="group relative w-full cursor-pointer overflow-hidden rounded-2xl border border-orange-400/30 bg-gradient-to-br from-orange-500/[0.16] via-bg-card/70 to-bg-card/90 p-5 shadow-[0_24px_70px_-28px_rgba(251,146,60,0.6)] backdrop-blur"
+    >
+      <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-orange-500/25 blur-3xl" />
+
+      <div className="relative flex items-center gap-2 text-orange-300">
+        <Flame size={16} className="animate-pulse" />
+        <span className="text-xs font-bold uppercase tracking-wider">🔥 Trending now</span>
+      </div>
+
+      <div className="relative mt-3 flex items-start gap-3">
+        {isUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={img} alt="" className="h-12 w-12 shrink-0 rounded-xl object-cover ring-1 ring-border" />
+        ) : (
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-2xl ring-1 ring-border">
+            {img || emojiOf(market.category)}
+          </div>
+        )}
+        <h3 className="line-clamp-3 text-base font-bold leading-snug text-ink">{market.question}</h3>
+      </div>
+
+      <div className="relative mt-4 flex items-end justify-between">
+        <div>
+          <div
+            className={clsx(
+              "text-4xl font-bold leading-none",
+              pYes >= 0.5 ? "text-yes-text" : "text-no-text"
+            )}
+          >
+            {toPercent(pYes)}
+          </div>
+          <div className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">
+            chance
+          </div>
+        </div>
+        <div className="text-right text-xs text-ink-faint">
+          <div>{`$${formatCompact(stats?.volume ?? 0)} vol`}</div>
+          <div>{stats?.trader_count ?? 0} traders</div>
+        </div>
+      </div>
+
+      <div className="relative mt-3 flex h-2 overflow-hidden rounded-full bg-no/25">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-yes to-yes-text"
+          style={{ width: `${pYes * 100}%` }}
+        />
+      </div>
+
+      <div className="relative mt-4 grid grid-cols-2 gap-2">
+        <button
+          disabled={!tradable}
+          onClick={(e) => {
+            e.stopPropagation();
+            go("yes");
+          }}
+          className={clsx("btn btn-yes py-2", !tradable && "pointer-events-none opacity-50")}
+        >
+          Yes <span className="opacity-70">{toCents(pYes)}</span>
+        </button>
+        <button
+          disabled={!tradable}
+          onClick={(e) => {
+            e.stopPropagation();
+            go("no");
+          }}
+          className={clsx("btn btn-no py-2", !tradable && "pointer-events-none opacity-50")}
+        >
+          No <span className="opacity-70">{toCents(pNo)}</span>
+        </button>
+      </div>
+    </motion.div>
   );
 }
 
