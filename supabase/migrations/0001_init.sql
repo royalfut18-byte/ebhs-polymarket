@@ -351,6 +351,9 @@ begin
   select * into m from public.markets where id = p_market_id for update;
   if not found then raise exception 'Market not found.'; end if;
   if m.status <> 'open' then raise exception 'This market is not open for trading.'; end if;
+  if m.close_at is not null and now() > m.close_at then
+    raise exception 'This market has closed for trading.';
+  end if;
 
   v_b := m.b; v_qy := m.q_yes; v_qn := m.q_no;
   v_price_before := public.lmsr_price_yes(m.q_yes, m.q_no, m.b);

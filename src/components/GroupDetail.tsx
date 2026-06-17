@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, BarChart3, Layers, Users } from "lucide-react";
 import { fetchGroupMarkets, fetchMarketStats } from "@/lib/queries";
-import { priceYes } from "@/lib/lmsr";
-import { formatCompact, toCents, toPercent } from "@/lib/format";
+import { displayPriceYes, isClosedForTrading } from "@/lib/lmsr";
+import { formatCompact, toPercent } from "@/lib/format";
 import { useCategoryEmoji } from "./useCategories";
 import StatusBadge from "./StatusBadge";
 import { FadeIn } from "./motion";
@@ -40,9 +40,7 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
   const rep = options[0];
   const title = rep.group_title ?? rep.question;
   const status = options.some((o) => o.status === "open") ? "open" : rep.status;
-  const sorted = [...options].sort(
-    (a, b) => priceYes(b.q_yes, b.q_no, b.b) - priceYes(a.q_yes, a.q_no, a.b)
-  );
+  const sorted = [...options].sort((a, b) => displayPriceYes(b) - displayPriceYes(a));
 
   let volume = 0;
   let traders = 0;
@@ -102,9 +100,10 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
 
       <div className="flex flex-col gap-2.5">
         {sorted.map((o) => {
-          const pYes = priceYes(o.q_yes, o.q_no, o.b);
-          const pNo = 1 - pYes;
-          const tradable = o.status === "open";
+          const pYes = displayPriceYes(o);
+          const tradable = !isClosedForTrading(o);
+          const resolved = o.status === "resolved";
+          const won = resolved && o.resolution === "yes";
           return (
             <div key={o.id} className="card card-hover flex items-center gap-4 p-4">
               <Link href={`/market/${o.id}`} className="min-w-0 flex-1">
@@ -129,19 +128,27 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
                 </div>
                 <div className="text-[10px] uppercase tracking-widest text-ink-faint">chance</div>
               </div>
-              <div className="flex w-[88px] shrink-0 flex-col gap-1.5">
-                <Link
-                  href={`/market/${o.id}?o=yes`}
-                  className={clsx("btn btn-yes py-1.5 text-xs", !tradable && "pointer-events-none opacity-50")}
-                >
-                  Yes {toCents(pYes)}
-                </Link>
-                <Link
-                  href={`/market/${o.id}?o=no`}
-                  className={clsx("btn btn-no py-1.5 text-xs", !tradable && "pointer-events-none opacity-50")}
-                >
-                  No {toCents(pNo)}
-                </Link>
+              <div className="w-[92px] shrink-0">
+                {resolved ? (
+                  <span
+                    className={clsx(
+                      "flex items-center justify-center rounded-xl px-3 py-2 text-xs font-bold",
+                      won ? "bg-yes/15 text-yes-text" : "bg-no/15 text-no-text"
+                    )}
+                  >
+                    {won ? "WON" : "LOST"}
+                  </span>
+                ) : (
+                  <Link
+                    href={`/market/${o.id}?o=yes`}
+                    className={clsx(
+                      "btn btn-primary w-full py-2 text-sm",
+                      !tradable && "pointer-events-none opacity-50"
+                    )}
+                  >
+                    Buy
+                  </Link>
+                )}
               </div>
             </div>
           );

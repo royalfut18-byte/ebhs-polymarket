@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { BarChart3, Users } from "lucide-react";
 import type { Market, MarketStat } from "@/lib/types";
-import { priceYes } from "@/lib/lmsr";
+import { displayPriceYes } from "@/lib/lmsr";
 import { formatCompact, toCents, toPercent } from "@/lib/format";
 import { useCategoryEmoji } from "./useCategories";
 import StatusBadge from "./StatusBadge";
@@ -27,7 +27,7 @@ function MarketThumb({ market }: { market: Market }) {
 
 export default function MarketCard({ market, stats }: { market: Market; stats?: MarketStat }) {
   const router = useRouter();
-  const pYes = priceYes(market.q_yes, market.q_no, market.b);
+  const pYes = displayPriceYes(market);
   const pNo = 1 - pYes;
   const href = `/market/${market.id}`;
   const tradable = market.status === "open";

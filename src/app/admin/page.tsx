@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Gift,
   LayoutGrid,
+  LifeBuoy,
   Lightbulb,
   ListChecks,
   MessageSquare,
@@ -21,12 +22,14 @@ import ManageSuggestions from "@/components/admin/ManageSuggestions";
 import ManageCategories from "@/components/admin/ManageCategories";
 import PrizesEditor from "@/components/admin/PrizesEditor";
 import AdminChat from "@/components/admin/AdminChat";
+import AdminSupport from "@/components/admin/AdminSupport";
 import clsx from "clsx";
 
 type Tab =
   | "create"
   | "markets"
   | "suggestions"
+  | "support"
   | "users"
   | "categories"
   | "subadmins"
@@ -59,6 +62,7 @@ export default function AdminPage() {
     { id: "create", label: "Create Market", icon: <LayoutGrid size={16} /> },
     { id: "markets", label: "Markets", icon: <ListChecks size={16} /> },
     { id: "suggestions", label: "Suggestions", icon: <Lightbulb size={16} /> },
+    { id: "support", label: "Support", icon: <LifeBuoy size={16} /> },
     { id: "users", label: "Users", icon: <Users size={16} /> },
     { id: "categories", label: "Categories", icon: <Tags size={16} /> },
     { id: "subadmins", label: "Sub-admins", icon: <ShieldCheck size={16} />, adminOnly: true },
@@ -102,6 +106,7 @@ export default function AdminPage() {
         {activeTab === "create" && <CreateMarketForm />}
         {activeTab === "markets" && <ManageMarkets />}
         {activeTab === "suggestions" && <ManageSuggestions />}
+        {activeTab === "support" && <AdminSupport />}
         {activeTab === "users" && <ManageUsers />}
         {activeTab === "categories" && <ManageCategories />}
         {activeTab === "subadmins" && isAdmin && <ManageSubadmins />}

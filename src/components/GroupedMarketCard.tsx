@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { BarChart3, Layers, Users } from "lucide-react";
 import type { Market, MarketStat, MarketStatus } from "@/lib/types";
-import { priceYes } from "@/lib/lmsr";
+import { displayPriceYes } from "@/lib/lmsr";
 import { formatCompact, toPercent } from "@/lib/format";
 import { useCategoryEmoji } from "./useCategories";
 import StatusBadge from "./StatusBadge";
@@ -29,9 +29,7 @@ export default function GroupedMarketCard({
   const router = useRouter();
   const emojiOf = useCategoryEmoji();
 
-  const sorted = [...options].sort(
-    (a, b) => priceYes(b.q_yes, b.q_no, b.b) - priceYes(a.q_yes, a.q_no, a.b)
-  );
+  const sorted = [...options].sort((a, b) => displayPriceYes(b) - displayPriceYes(a));
   const top = sorted.slice(0, 4);
   const more = sorted.length - top.length;
 
@@ -81,7 +79,7 @@ export default function GroupedMarketCard({
 
       <div className="relative flex flex-col gap-2">
         {top.map((o) => {
-          const p = priceYes(o.q_yes, o.q_no, o.b);
+          const p = displayPriceYes(o);
           return (
             <div key={o.id} className="flex items-center gap-2.5">
               <span className="w-24 shrink-0 truncate text-sm text-ink-dim">{o.option_label}</span>

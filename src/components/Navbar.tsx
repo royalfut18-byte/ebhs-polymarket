@@ -18,6 +18,7 @@ import { useAuth } from "./AuthProvider";
 import { formatMoney } from "@/lib/format";
 import Avatar from "./Avatar";
 import Logo from "./Logo";
+import NavPortfolio from "./NavPortfolio";
 
 export default function Navbar() {
   const { profile, isStaff, loading, signOut } = useAuth();
@@ -80,9 +81,12 @@ export default function Navbar() {
             <div className="h-9 w-24 animate-pulse rounded-xl bg-bg-hover" />
           ) : profile ? (
             <>
+              <NavPortfolio />
+
               <div className="hidden items-center gap-1.5 rounded-xl border border-yellow-400/20 bg-yellow-400/[0.07] px-3 py-1.5 text-sm shadow-[0_0_18px_-8px_rgba(250,204,21,0.6)] sm:flex">
                 <Coins size={15} className="text-yellow-300" />
                 <span className="font-semibold text-ink">{formatMoney(profile.balance)}</span>
+                <span className="text-[10px] uppercase tracking-wide text-ink-faint">cash</span>
               </div>
 
               {isStaff && (

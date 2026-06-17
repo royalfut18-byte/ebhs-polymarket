@@ -13,6 +13,17 @@ export interface Profile {
   role: Role;
   balance: number;
   created_at: string;
+  last_spin_at: string | null;
+}
+
+export interface SupportMessage {
+  id: string;
+  ticket_user_id: string;
+  sender_id: string | null;
+  from_staff: boolean;
+  body: string;
+  created_at: string;
+  profiles?: Pick<Profile, "username"> | null;
 }
 
 export interface Market {

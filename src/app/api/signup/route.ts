@@ -39,6 +39,12 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+  if (!instagram) {
+    return NextResponse.json(
+      { error: "Instagram is required (used for prize claims)." },
+      { status: 400 }
+    );
+  }
 
   let admin;
   try {

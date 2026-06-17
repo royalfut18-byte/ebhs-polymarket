@@ -15,6 +15,7 @@ import type {
   Prizes,
   Profile,
   ProfilePrivate,
+  SupportMessage,
   TradeWithProfile,
   UserTradeRow,
 } from "./types";
@@ -190,6 +191,29 @@ export async function fetchAdminMessages(): Promise<AdminMessage[]> {
     .limit(300);
   if (error) throw error;
   return (data as unknown as AdminMessage[]) ?? [];
+}
+
+export async function fetchSupportThread(ticketUserId: string): Promise<SupportMessage[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("support_messages")
+    .select("*")
+    .eq("ticket_user_id", ticketUserId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as SupportMessage[]) ?? [];
+}
+
+// All support messages the caller can see (staff see everything). Newest first.
+export async function fetchSupportInbox(): Promise<SupportMessage[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("support_messages")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(1000);
+  if (error) throw error;
+  return (data as SupportMessage[]) ?? [];
 }
 
 export async function fetchMarketSuggestions(): Promise<MarketSuggestion[]> {

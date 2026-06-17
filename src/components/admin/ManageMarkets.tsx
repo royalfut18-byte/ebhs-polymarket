@@ -6,12 +6,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
 import { fetchMarkets } from "@/lib/queries";
-import { priceYes } from "@/lib/lmsr";
+import { displayPriceYes } from "@/lib/lmsr";
 import { toPercent } from "@/lib/format";
 import type { Market } from "@/lib/types";
 import StatusBadge from "@/components/StatusBadge";
 import { useAuth } from "@/components/AuthProvider";
 import { useCategories } from "@/components/useCategories";
+import clsx from "clsx";
 
 export default function ManageMarkets() {
   const supabase = getSupabase();
@@ -51,6 +52,17 @@ export default function ManageMarkets() {
     return <div className="card py-10 text-center text-sm text-ink-dim">No markets yet.</div>;
   }
 
+  const standalone = markets.filter((m) => !m.group_id);
+  const groupsMap = new Map<string, Market[]>();
+  for (const m of markets) {
+    if (m.group_id) {
+      const arr = groupsMap.get(m.group_id);
+      if (arr) arr.push(m);
+      else groupsMap.set(m.group_id, [m]);
+    }
+  }
+  const groups = Array.from(groupsMap.entries());
+
   return (
     <div className="flex flex-col gap-3">
       {error && (
@@ -58,8 +70,13 @@ export default function ManageMarkets() {
           {error}
         </div>
       )}
-      {markets.map((m) => {
-        const pYes = priceYes(m.q_yes, m.q_no, m.b);
+
+      {groups.map(([gid, opts]) => (
+        <GroupAdminCard key={gid} groupId={gid} options={opts} isAdmin={isAdmin} onChange={invalidate} />
+      ))}
+
+      {standalone.map((m) => {
+        const pYes = displayPriceYes(m);
         const busy = busyId === m.id;
         const settled = m.status === "resolved" || m.status === "cancelled";
         return (
@@ -189,6 +206,150 @@ function ActionBtn({
     <button {...rest} className={`btn px-3 py-1.5 text-xs ${className ?? ""}`}>
       {children}
     </button>
+  );
+}
+
+function GroupAdminCard({
+  groupId,
+  options,
+  isAdmin,
+  onChange,
+}: {
+  groupId: string;
+  options: Market[];
+  isAdmin: boolean;
+  onChange: () => void;
+}) {
+  const supabase = getSupabase();
+  const title = options[0]?.group_title ?? "Multi-outcome market";
+  const settledAll = options.every((o) => o.status === "resolved" || o.status === "cancelled");
+  const sorted = [...options].sort((a, b) => displayPriceYes(b) - displayPriceYes(a));
+  const [winner, setWinner] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function resolve() {
+    if (!winner) {
+      setErr("Pick the winning option first.");
+      return;
+    }
+    const label = options.find((o) => o.id === winner)?.option_label;
+    if (!confirm(`Resolve "${title}" → "${label}"? That option pays out at 100¢; all others go to 0.`))
+      return;
+    setBusy(true);
+    setErr(null);
+    const { error } = await supabase.rpc("resolve_group", {
+      p_group_id: groupId,
+      p_winner_market_id: winner,
+    });
+    setBusy(false);
+    if (error) setErr(error.message);
+    else onChange();
+  }
+
+  async function loopRpc(name: "cancel_market" | "delete_market", filterOpen: boolean) {
+    setBusy(true);
+    setErr(null);
+    for (const o of options) {
+      if (filterOpen && !(o.status === "open" || o.status === "closed")) continue;
+      const { error } = await supabase.rpc(name, { p_market_id: o.id });
+      if (error) {
+        setErr(error.message);
+        setBusy(false);
+        return;
+      }
+    }
+    setBusy(false);
+    onChange();
+  }
+
+  return (
+    <div className="card p-4">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="inline-flex items-center gap-1 rounded-full bg-accent-violet/15 px-2 py-0.5 text-xs font-medium text-accent-violet">
+          Multi · {options.length} options
+        </span>
+        <span className="text-xs text-ink-faint">{options[0]?.category}</span>
+        {settledAll && <span className="text-xs font-semibold text-brand">Settled</span>}
+      </div>
+      <Link href={`/group/${groupId}`} className="font-semibold hover:text-brand">
+        {title}
+      </Link>
+
+      <div className="mt-3 flex flex-col gap-1.5">
+        {sorted.map((o) => (
+          <div key={o.id} className="flex items-center gap-2 text-sm">
+            <span className="min-w-0 flex-1 truncate text-ink-dim">{o.option_label}</span>
+            {o.status === "resolved" ? (
+              <span
+                className={clsx(
+                  "rounded px-1.5 py-0.5 text-xs font-semibold",
+                  o.resolution === "yes" ? "bg-yes/15 text-yes-text" : "bg-no/15 text-no-text"
+                )}
+              >
+                {o.resolution === "yes" ? "WON" : "LOST"}
+              </span>
+            ) : (
+              <span className="font-semibold text-ink">{toPercent(displayPriceYes(o))}</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {err && <div className="mt-2 text-xs text-no-text">{err}</div>}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {!settledAll && (
+          <>
+            <select
+              value={winner}
+              onChange={(e) => setWinner(e.target.value)}
+              className="input w-auto py-1.5 text-xs"
+            >
+              <option value="">Resolve to…</option>
+              {options.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.option_label}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={resolve}
+              disabled={busy || !winner}
+              className="btn bg-yes/15 px-3 py-1.5 text-xs text-yes-text hover:bg-yes/25"
+            >
+              {busy ? <Loader2 size={13} className="animate-spin" /> : "Resolve"}
+            </button>
+            <button
+              onClick={() => {
+                if (confirm("Cancel this whole market? Everyone is refunded what they paid."))
+                  loopRpc("cancel_market", true);
+              }}
+              disabled={busy}
+              className="btn btn-ghost px-3 py-1.5 text-xs"
+            >
+              Cancel
+            </button>
+          </>
+        )}
+        {isAdmin && (
+          <button
+            onClick={() => {
+              if (
+                confirm(
+                  "Permanently delete this whole multi-outcome market? Holders are refunded their cost basis. This cannot be undone."
+                )
+              )
+                loopRpc("delete_market", false);
+            }}
+            disabled={busy}
+            className="btn border border-no/40 bg-no/10 px-3 py-1.5 text-xs text-no-text hover:bg-no/25"
+          >
+            <Trash2 size={13} /> Delete
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -8,6 +8,7 @@ import { fetchUserPositions, fetchUserTrades } from "@/lib/queries";
 import { enrichPositions, summarize, STARTING_BALANCE } from "@/lib/pnl";
 import { formatMoney, formatShares, signedMoney, signedPct, timeAgo, toCents } from "@/lib/format";
 import PositionsTable from "@/components/PositionsTable";
+import SpinWheel from "@/components/SpinWheel";
 import { AnimatedNumber, FadeIn } from "@/components/motion";
 import clsx from "clsx";
 
@@ -106,6 +107,9 @@ export default function PortfolioPage() {
           tone={s.openPnl >= 0 ? "up" : "down"}
         />
       </div>
+
+      {/* Weekly spin */}
+      <SpinWheel />
 
       {/* Positions */}
       <section className="flex flex-col gap-3">

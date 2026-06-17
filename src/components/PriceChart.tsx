@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { useMemo } from "react";
 import type { Market, Trade } from "@/lib/types";
-import { priceYes } from "@/lib/lmsr";
+import { displayPriceYes } from "@/lib/lmsr";
 
 interface Point {
   t: number;
@@ -39,12 +39,12 @@ export default function PriceChart({ market, trades }: { market: Market; trades:
       });
     }
     // Extend the line to "now" at the current price so it doesn't end abruptly.
-    const current = Math.round(priceYes(market.q_yes, market.q_no, market.b) * 100);
+    const current = Math.round(displayPriceYes(market) * 100);
     pts.push({ t: Date.now(), label: "now", price: current });
     return pts;
   }, [market, trades]);
 
-  const current = priceYes(market.q_yes, market.q_no, market.b);
+  const current = displayPriceYes(market);
 
   return (
     <div className="card p-4">

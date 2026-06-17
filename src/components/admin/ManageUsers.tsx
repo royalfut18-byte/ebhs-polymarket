@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Instagram, Loader2 } from "lucide-react";
+import { Check, Instagram, Loader2, Trash2 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
 import { fetchAllProfiles, fetchProfilesPrivate } from "@/lib/queries";
 import { formatMoney } from "@/lib/format";
@@ -72,9 +72,30 @@ function UserRow({
   const [value, setValue] = useState(String(user.balance));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const dirty = Number(value) !== Number(user.balance);
+
+  async function deleteUser() {
+    if (
+      !confirm(
+        `Delete @${user.username}? This removes their account and all their positions across every market. This cannot be undone.`
+      )
+    )
+      return;
+    setDeleting(true);
+    setErr(null);
+    const { error } = await supabase.rpc("admin_delete_user", { p_user_id: user.id });
+    setDeleting(false);
+    if (error) {
+      setErr(error.message);
+    } else {
+      queryClient.invalidateQueries({ queryKey: ["all-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["market-stats"] });
+    }
+  }
 
   async function save() {
     setSaving(true);
@@ -147,6 +168,16 @@ function UserRow({
                 "Set"
               )}
             </button>
+            {user.role !== "admin" && (
+              <button
+                onClick={deleteUser}
+                disabled={deleting}
+                className="btn shrink-0 border border-no/40 bg-no/10 px-2.5 py-1.5 text-xs text-no-text hover:bg-no/25"
+                aria-label="Delete user"
+              >
+                {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+              </button>
+            )}
             {err && <span className="text-xs text-no-text">{err}</span>}
           </div>
         ) : (

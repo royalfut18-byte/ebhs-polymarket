@@ -32,6 +32,11 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
 
     try {
       if (mode === "signup") {
+        if (!instagram.trim()) {
+          setError("Instagram is required (used for prize claims).");
+          setLoading(false);
+          return;
+        }
         const res = await fetch("/api/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -117,15 +122,16 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
               </label>
 
               <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-ink-dim">Instagram (optional)</span>
+                <span className="text-xs font-medium text-ink-dim">Instagram</span>
                 <input
                   value={instagram}
                   onChange={(e) => setInstagram(e.target.value)}
                   placeholder="@yourhandle"
+                  required
                   className="input"
                 />
                 <span className="text-xs text-ink-faint">
-                  Private — only admins see this, used for claiming prizes. 🔒
+                  Required — private, only admins see it, used for claiming prizes. 🔒
                 </span>
               </label>
             </>

@@ -31,6 +31,33 @@ export function priceOf(outcome: Outcome, qYes: number, qNo: number, b: number):
   return outcome === "yes" ? priceYes(qYes, qNo, b) : priceNo(qYes, qNo, b);
 }
 
+/** Display YES price: a resolved market shows 100¢ (yes) or 0¢ (no); else live price. */
+export function displayPriceYes(
+  market: Pick<Market, "status" | "resolution" | "q_yes" | "q_no" | "b">
+): number {
+  if (market.status === "resolved") {
+    if (market.resolution === "yes") return 1;
+    if (market.resolution === "no") return 0;
+  }
+  return priceYes(market.q_yes, market.q_no, market.b);
+}
+
+/** Display price for a given outcome, accounting for resolution. */
+export function displayPriceOf(
+  outcome: Outcome,
+  market: Pick<Market, "status" | "resolution" | "q_yes" | "q_no" | "b">
+): number {
+  const y = displayPriceYes(market);
+  return outcome === "yes" ? y : 1 - y;
+}
+
+/** True when a market can no longer take trades (closed, settled, or past close_at). */
+export function isClosedForTrading(market: Pick<Market, "status" | "close_at">): boolean {
+  if (market.status !== "open") return true;
+  if (market.close_at && new Date(market.close_at).getTime() <= Date.now()) return true;
+  return false;
+}
+
 /** Stable LMSR cost via the log-sum-exp trick. */
 export function cost(qYes: number, qNo: number, b: number): number {
   if (b <= 0) return 0;

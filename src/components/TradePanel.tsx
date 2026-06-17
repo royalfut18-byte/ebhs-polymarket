@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { getSupabase } from "@/lib/supabase/client";
-import { priceYes, quoteTrade } from "@/lib/lmsr";
+import { isClosedForTrading, priceYes, quoteTrade } from "@/lib/lmsr";
 import { formatMoney, formatShares, toCents } from "@/lib/format";
 import type { Market, Outcome, Position, TradeSide } from "@/lib/types";
 import StatusBadge from "./StatusBadge";
@@ -50,11 +50,18 @@ export default function TradePanel({ market }: { market: Market }) {
 
   const pYes = priceYes(market.q_yes, market.q_no, market.b);
   const pNo = 1 - pYes;
-  const tradable = market.status === "open";
+  const isGrouped = !!market.option_label;
+  const tradable = !isClosedForTrading(market);
+  const outcomeLabel = isGrouped ? market.option_label! : outcome.toUpperCase();
 
   useEffect(() => {
     setMsg(null);
   }, [outcome, side, amount]);
+
+  // Grouped (multi-outcome) markets are traded as "buy the option" = buy YES.
+  useEffect(() => {
+    if (isGrouped && outcome !== "yes") setOutcome("yes");
+  }, [isGrouped, outcome]);
 
   const value = parseFloat(amount) || 0;
   const effectiveValue = side === "sell" ? Math.min(value, heldShares) : value;
@@ -139,38 +146,49 @@ export default function TradePanel({ market }: { market: Market }) {
         ))}
       </div>
 
-      {/* Outcome toggle */}
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          onClick={() => setOutcome("yes")}
-          className={clsx(
-            "flex flex-col items-center rounded-xl border py-2.5 transition-colors",
-            outcome === "yes"
-              ? "border-yes bg-yes/15"
-              : "border-border bg-bg-soft hover:bg-bg-hover"
-          )}
-        >
-          <span className="text-xs font-medium uppercase tracking-wide text-ink-dim">Yes</span>
-          <span className="text-lg font-bold text-yes-text">{toCents(pYes)}</span>
-        </button>
-        <button
-          onClick={() => setOutcome("no")}
-          className={clsx(
-            "flex flex-col items-center rounded-xl border py-2.5 transition-colors",
-            outcome === "no" ? "border-no bg-no/15" : "border-border bg-bg-soft hover:bg-bg-hover"
-          )}
-        >
-          <span className="text-xs font-medium uppercase tracking-wide text-ink-dim">No</span>
-          <span className="text-lg font-bold text-no-text">{toCents(pNo)}</span>
-        </button>
-      </div>
+      {/* Outcome */}
+      {isGrouped ? (
+        <div className="flex items-center justify-between rounded-xl border border-brand/40 bg-brand/10 px-4 py-3">
+          <span className="truncate pr-2 text-sm font-semibold text-ink">
+            Buy “{market.option_label}”
+          </span>
+          <span className="shrink-0 text-lg font-bold text-brand-light">{toCents(pYes)}</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => setOutcome("yes")}
+            className={clsx(
+              "flex flex-col items-center rounded-xl border py-2.5 transition-colors",
+              outcome === "yes"
+                ? "border-yes bg-yes/15"
+                : "border-border bg-bg-soft hover:bg-bg-hover"
+            )}
+          >
+            <span className="text-xs font-medium uppercase tracking-wide text-ink-dim">Yes</span>
+            <span className="text-lg font-bold text-yes-text">{toCents(pYes)}</span>
+          </button>
+          <button
+            onClick={() => setOutcome("no")}
+            className={clsx(
+              "flex flex-col items-center rounded-xl border py-2.5 transition-colors",
+              outcome === "no" ? "border-no bg-no/15" : "border-border bg-bg-soft hover:bg-bg-hover"
+            )}
+          >
+            <span className="text-xs font-medium uppercase tracking-wide text-ink-dim">No</span>
+            <span className="text-lg font-bold text-no-text">{toCents(pNo)}</span>
+          </button>
+        </div>
+      )}
 
       {!tradable ? (
         <div className="rounded-xl border border-border bg-bg-soft p-4 text-center text-sm text-ink-dim">
           <div className="mb-1">
             <StatusBadge status={market.status} resolution={market.resolution} />
           </div>
-          Trading is closed for this market.
+          {market.status === "open"
+            ? "Betting has closed — the deadline passed."
+            : "Trading is closed for this market."}
         </div>
       ) : !user ? (
         <Link href="/login" className="btn btn-primary w-full">
@@ -184,7 +202,7 @@ export default function TradePanel({ market }: { market: Market }) {
               <span>{side === "buy" ? "Amount ($)" : "Shares to sell"}</span>
               {side === "sell" && (
                 <span>
-                  You hold {formatShares(heldShares)} {outcome.toUpperCase()}
+                  You hold {formatShares(heldShares)} {outcomeLabel}
                 </span>
               )}
             </div>
@@ -268,7 +286,7 @@ export default function TradePanel({ market }: { market: Market }) {
             )}
           >
             {submitting && <Loader2 size={16} className="animate-spin" />}
-            {side === "buy" ? `Buy ${outcome.toUpperCase()}` : `Sell ${outcome.toUpperCase()}`}
+            {side === "buy" ? `Buy ${outcomeLabel}` : `Sell ${outcomeLabel}`}
           </button>
 
           {/* Holdings summary */}

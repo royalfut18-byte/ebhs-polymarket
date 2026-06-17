@@ -5,6 +5,7 @@ import "./globals.css";
 import Providers from "@/components/Providers";
 import Navbar from "@/components/Navbar";
 import ConfigBanner from "@/components/ConfigBanner";
+import SupportWidget from "@/components/SupportWidget";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               — no real currency, crypto, or wallets. Built for fun. 🎲
             </footer>
           </div>
+          <SupportWidget />
         </Providers>
       </body>
     </html>
