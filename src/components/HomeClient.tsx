@@ -87,8 +87,8 @@ export default function HomeClient() {
             <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-accent-violet/15 blur-3xl" />
             <div
               className={clsx(
-                "relative grid items-center gap-8",
-                trending && "lg:grid-cols-[1fr_minmax(0,380px)]"
+                "relative grid gap-8",
+                trending && "lg:grid-cols-2"
               )}
             >
               <div className="max-w-2xl">
@@ -169,75 +169,81 @@ function FeaturedMarket({ market, stats }: { market: Market; stats?: MarketStat 
       onClick={() => go()}
       whileHover={{ y: -4 }}
       transition={{ type: "spring", stiffness: 300, damping: 22 }}
-      className="group relative w-full cursor-pointer overflow-hidden rounded-2xl border border-orange-400/30 bg-gradient-to-br from-orange-500/[0.16] via-bg-card/70 to-bg-card/90 p-5 shadow-[0_24px_70px_-28px_rgba(251,146,60,0.6)] backdrop-blur"
+      className="group relative flex h-full min-h-[340px] w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-orange-400/30 bg-gradient-to-br from-orange-500/[0.16] via-bg-card/70 to-bg-card/90 p-6 shadow-[0_24px_70px_-28px_rgba(251,146,60,0.6)] backdrop-blur sm:p-7"
     >
-      <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-orange-500/25 blur-3xl" />
+      <div className="pointer-events-none absolute -right-12 -top-12 h-52 w-52 rounded-full bg-orange-500/25 blur-3xl" />
 
       <div className="relative flex items-center gap-2 text-orange-300">
-        <Flame size={16} className="animate-pulse" />
+        <Flame size={17} className="animate-pulse" />
         <span className="text-xs font-bold uppercase tracking-wider">🔥 Trending now</span>
       </div>
 
-      <div className="relative mt-3 flex items-start gap-3">
+      <div className="relative mt-4 flex items-start gap-4">
         {isUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt="" className="h-12 w-12 shrink-0 rounded-xl object-cover ring-1 ring-border" />
+          <img src={img} alt="" className="h-14 w-14 shrink-0 rounded-2xl object-cover ring-1 ring-border" />
         ) : (
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-2xl ring-1 ring-border">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/[0.06] text-3xl ring-1 ring-border">
             {img || emojiOf(market.category)}
           </div>
         )}
-        <h3 className="line-clamp-3 text-base font-bold leading-snug text-ink">{market.question}</h3>
+        <h3 className="text-lg font-bold leading-snug text-ink sm:text-2xl">{market.question}</h3>
       </div>
 
-      <div className="relative mt-4 flex items-end justify-between">
-        <div>
+      {market.description && (
+        <p className="relative mt-3 line-clamp-2 text-sm text-ink-dim">{market.description}</p>
+      )}
+
+      <div className="relative mt-auto pt-6">
+        <div className="flex items-end justify-between">
+          <div>
+            <div
+              className={clsx(
+                "text-5xl font-bold leading-none",
+                pYes >= 0.5 ? "text-yes-text" : "text-no-text"
+              )}
+            >
+              {toPercent(pYes)}
+            </div>
+            <div className="mt-1.5 text-[11px] font-semibold uppercase tracking-widest text-ink-faint">
+              chance
+            </div>
+          </div>
+          <div className="text-right text-xs text-ink-faint">
+            <div className="font-medium text-ink-dim">{`$${formatCompact(stats?.volume ?? 0)} vol`}</div>
+            <div>{stats?.trader_count ?? 0} traders</div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-no/25">
           <div
-            className={clsx(
-              "text-4xl font-bold leading-none",
-              pYes >= 0.5 ? "text-yes-text" : "text-no-text"
-            )}
+            className="h-full rounded-full bg-gradient-to-r from-yes to-yes-text"
+            style={{ width: `${pYes * 100}%` }}
+          />
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-2.5">
+          <button
+            disabled={!tradable}
+            onClick={(e) => {
+              e.stopPropagation();
+              go("yes");
+            }}
+            className={clsx("btn btn-yes py-2.5 text-[15px]", !tradable && "pointer-events-none opacity-50")}
           >
-            {toPercent(pYes)}
-          </div>
-          <div className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">
-            chance
-          </div>
+            Yes <span className="opacity-70">{toCents(pYes)}</span>
+          </button>
+          <button
+            disabled={!tradable}
+            onClick={(e) => {
+              e.stopPropagation();
+              go("no");
+            }}
+            className={clsx("btn btn-no py-2.5 text-[15px]", !tradable && "pointer-events-none opacity-50")}
+          >
+            No <span className="opacity-70">{toCents(pNo)}</span>
+          </button>
         </div>
-        <div className="text-right text-xs text-ink-faint">
-          <div>{`$${formatCompact(stats?.volume ?? 0)} vol`}</div>
-          <div>{stats?.trader_count ?? 0} traders</div>
-        </div>
-      </div>
-
-      <div className="relative mt-3 flex h-2 overflow-hidden rounded-full bg-no/25">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-yes to-yes-text"
-          style={{ width: `${pYes * 100}%` }}
-        />
-      </div>
-
-      <div className="relative mt-4 grid grid-cols-2 gap-2">
-        <button
-          disabled={!tradable}
-          onClick={(e) => {
-            e.stopPropagation();
-            go("yes");
-          }}
-          className={clsx("btn btn-yes py-2", !tradable && "pointer-events-none opacity-50")}
-        >
-          Yes <span className="opacity-70">{toCents(pYes)}</span>
-        </button>
-        <button
-          disabled={!tradable}
-          onClick={(e) => {
-            e.stopPropagation();
-            go("no");
-          }}
-          className={clsx("btn btn-no py-2", !tradable && "pointer-events-none opacity-50")}
-        >
-          No <span className="opacity-70">{toCents(pNo)}</span>
-        </button>
       </div>
     </motion.div>
   );
