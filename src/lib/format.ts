@@ -30,6 +30,16 @@ export function formatMoney(n: number, digits = 2): string {
   return `$${formatCredits(n, digits)}`;
 }
 
+/** Signed money, e.g. 12.5 -> "+$12.50", -3 -> "-$3.00". */
+export function signedMoney(n: number, digits = 2): string {
+  return `${n >= 0 ? "+" : "-"}${formatMoney(Math.abs(n), digits)}`;
+}
+
+/** Signed percent, e.g. 12.3 -> "+12.3%". */
+export function signedPct(n: number, digits = 1): string {
+  return `${n >= 0 ? "+" : ""}${n.toFixed(digits)}%`;
+}
+
 /** Compact number, e.g. 12000 -> "12K". */
 export function formatCompact(n: number): string {
   if (n === null || n === undefined || isNaN(n)) return "0";

@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, TrendingDown, TrendingUp } from "lucide-react";
 import { fetchProfileByUsername, fetchUserPositions } from "@/lib/queries";
-import { priceOf } from "@/lib/lmsr";
-import { formatMoney, formatShares, toCents } from "@/lib/format";
+import { enrichPositions, summarize } from "@/lib/pnl";
+import { formatMoney, signedMoney, signedPct } from "@/lib/format";
 import Avatar from "./Avatar";
+import PositionsTable from "./PositionsTable";
+import { FadeIn } from "./motion";
 import clsx from "clsx";
 
 export default function PublicProfile({ username }: { username: string }) {
@@ -36,17 +38,12 @@ export default function PublicProfile({ username }: { username: string }) {
     );
   }
 
-  const positions = (positionsQuery.data ?? []).filter((p) => p.markets);
-  const enriched = positions.map((p) => {
-    const m = p.markets!;
-    const price = priceOf(p.outcome, m.q_yes, m.q_no, m.b);
-    return { p, m, price, value: p.shares * price };
-  });
-  const positionsValue = enriched.reduce((s, e) => s + e.value, 0);
-  const netWorth = profile.balance + positionsValue;
+  const enriched = enrichPositions(positionsQuery.data ?? []);
+  const s = summarize(enriched, profile.balance);
+  const up = s.totalPnl >= 0;
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-5">
+    <FadeIn className="mx-auto flex max-w-3xl flex-col gap-5">
       <Link
         href="/leaderboard"
         className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-dim hover:text-ink"
@@ -55,20 +52,39 @@ export default function PublicProfile({ username }: { username: string }) {
       </Link>
 
       <div className="card flex items-center gap-4 p-5">
-        <Avatar name={profile.username} size={56} />
+        <Avatar name={profile.username} size={60} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h1 className="truncate text-xl font-bold">@{profile.username}</h1>
             {profile.role !== "user" && (
-              <span className="rounded-full bg-bg-hover px-2 py-0.5 text-xs font-medium capitalize text-ink-dim">
+              <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs font-medium capitalize text-ink-dim">
                 {profile.role}
               </span>
             )}
           </div>
-          <div className="mt-1 text-sm text-ink-dim">
-            Net worth <span className="font-semibold text-ink">{formatMoney(netWorth)}</span>
+          <div className="mt-1 flex items-center gap-1.5 text-sm">
+            <span className="text-ink-dim">P/L</span>
+            {up ? (
+              <TrendingUp size={14} className="text-yes-text" />
+            ) : (
+              <TrendingDown size={14} className="text-no-text" />
+            )}
+            <span className={clsx("font-semibold", up ? "text-yes-text" : "text-no-text")}>
+              {signedMoney(s.totalPnl)} ({signedPct(s.totalPct)})
+            </span>
           </div>
         </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <Stat label="Net worth" value={formatMoney(s.netWorth)} />
+        <Stat label="Positions" value={formatMoney(s.positionsValue)} />
+        <Stat
+          label="All-time P/L"
+          value={signedMoney(s.totalPnl)}
+          tone={up ? "up" : "down"}
+        />
       </div>
 
       <section className="flex flex-col gap-3">
@@ -77,50 +93,26 @@ export default function PublicProfile({ username }: { username: string }) {
         </h2>
         {positionsQuery.isLoading ? (
           <div className="card py-10 text-center text-sm text-ink-faint">Loading…</div>
-        ) : enriched.length === 0 ? (
-          <div className="card py-10 text-center text-sm text-ink-dim">No open positions.</div>
         ) : (
-          <div className="card overflow-x-auto">
-            <table className="w-full min-w-[520px] text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-faint">
-                  <th className="px-4 py-3 font-medium">Market</th>
-                  <th className="px-4 py-3 font-medium">Outcome</th>
-                  <th className="px-4 py-3 text-right font-medium">Shares</th>
-                  <th className="px-4 py-3 text-right font-medium">Now</th>
-                  <th className="px-4 py-3 text-right font-medium">Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {enriched.map(({ p, m, price, value }) => (
-                  <tr key={p.id} className="border-b border-border/60 last:border-0">
-                    <td className="max-w-[240px] px-4 py-3">
-                      <Link href={`/market/${m.id}`} className="line-clamp-1 hover:text-brand">
-                        {m.question}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={clsx(
-                          "rounded-full px-2 py-0.5 text-xs font-semibold",
-                          p.outcome === "yes"
-                            ? "bg-yes/15 text-yes-text"
-                            : "bg-no/15 text-no-text"
-                        )}
-                      >
-                        {p.outcome.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">{formatShares(p.shares)}</td>
-                    <td className="px-4 py-3 text-right">{toCents(price)}</td>
-                    <td className="px-4 py-3 text-right font-medium">{formatMoney(value)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <PositionsTable rows={enriched} />
         )}
       </section>
+    </FadeIn>
+  );
+}
+
+function Stat({ label, value, tone }: { label: string; value: string; tone?: "up" | "down" }) {
+  return (
+    <div className="card p-4">
+      <div className="text-xs font-medium uppercase tracking-wide text-ink-faint">{label}</div>
+      <div
+        className={clsx(
+          "mt-1 text-lg font-bold tabular-nums",
+          tone === "up" ? "text-yes-text" : tone === "down" ? "text-no-text" : "text-ink"
+        )}
+      >
+        {value}
+      </div>
     </div>
   );
 }

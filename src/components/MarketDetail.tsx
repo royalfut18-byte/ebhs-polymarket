@@ -141,7 +141,7 @@ export default function MarketDetail({ id }: { id: string }) {
               ))}
             </div>
             {tab === "activity" && <ActivityFeed trades={trades} />}
-            {tab === "holders" && <Holders holders={holdersQuery.data ?? []} />}
+            {tab === "holders" && <Holders holders={holdersQuery.data ?? []} market={market} />}
             {tab === "comments" && <Comments marketId={market.id} />}
           </div>
         </div>

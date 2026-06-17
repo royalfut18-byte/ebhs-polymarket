@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Wallet } from "lucide-react";
+import { TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { fetchUserPositions, fetchUserTrades } from "@/lib/queries";
-import { priceOf } from "@/lib/lmsr";
-import { formatMoney, formatShares, timeAgo, toCents } from "@/lib/format";
-
-const signedMoney = (n: number) => `${n >= 0 ? "+" : "-"}${formatMoney(Math.abs(n))}`;
-import type { PositionWithMarket } from "@/lib/types";
+import { enrichPositions, summarize, STARTING_BALANCE } from "@/lib/pnl";
+import { formatMoney, formatShares, signedMoney, signedPct, timeAgo, toCents } from "@/lib/format";
+import PositionsTable from "@/components/PositionsTable";
+import { AnimatedNumber, FadeIn } from "@/components/motion";
 import clsx from "clsx";
 
 export default function PortfolioPage() {
@@ -41,33 +40,70 @@ export default function PortfolioPage() {
     );
   }
 
-  const positions = (positionsQuery.data ?? []).filter((p) => p.markets);
-  const enriched = positions.map((p) => {
-    const m = p.markets!;
-    const price = priceOf(p.outcome, m.q_yes, m.q_no, m.b);
-    const value = p.shares * price;
-    const basis = p.shares * p.avg_price;
-    return { p, m, price, value, basis, pnl: value - basis };
-  });
-
-  const positionsValue = enriched.reduce((s, e) => s + e.value, 0);
-  const totalBasis = enriched.reduce((s, e) => s + e.basis, 0);
-  const totalPnl = positionsValue - totalBasis;
-  const netWorth = profile.balance + positionsValue;
+  const enriched = enrichPositions(positionsQuery.data ?? []);
+  const s = summarize(enriched, profile.balance);
+  const up = s.totalPnl >= 0;
 
   return (
-    <div className="flex flex-col gap-6">
+    <FadeIn className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold tracking-tight">Portfolio</h1>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Net worth" value={formatMoney(netWorth)} />
-        <Stat label="Cash balance" value={formatMoney(profile.balance)} />
-        <Stat label="Positions value" value={formatMoney(positionsValue)} />
+      {/* Hero: net worth + all-time P/L */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="card p-5">
+          <div className="text-xs font-semibold uppercase tracking-widest text-ink-faint">
+            Portfolio value
+          </div>
+          <div className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
+            <AnimatedNumber value={s.netWorth} format={formatMoney} />
+          </div>
+          <div className="mt-1 text-xs text-ink-faint">
+            {formatMoney(profile.balance)} cash + {formatMoney(s.positionsValue)} in positions
+          </div>
+        </div>
+
+        <div
+          className={clsx(
+            "card relative overflow-hidden p-5",
+            up ? "border-yes/30" : "border-no/30"
+          )}
+        >
+          <div
+            className={clsx(
+              "pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full blur-3xl",
+              up ? "bg-yes/20" : "bg-no/20"
+            )}
+          />
+          <div className="relative flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-ink-faint">
+            All-time profit / loss
+            {up ? (
+              <TrendingUp size={14} className="text-yes-text" />
+            ) : (
+              <TrendingDown size={14} className="text-no-text" />
+            )}
+          </div>
+          <div
+            className={clsx(
+              "relative mt-1 text-3xl font-bold tracking-tight sm:text-4xl",
+              up ? "text-yes-text" : "text-no-text"
+            )}
+          >
+            <AnimatedNumber value={s.totalPnl} format={(n) => signedMoney(n)} />
+          </div>
+          <div className={clsx("relative mt-1 text-xs", up ? "text-yes-text" : "text-no-text")}>
+            {signedPct(s.totalPct)} · started with {formatMoney(STARTING_BALANCE)}
+          </div>
+        </div>
+      </div>
+
+      {/* Secondary stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <Stat label="Cash" value={formatMoney(profile.balance)} />
+        <Stat label="Invested" value={formatMoney(s.basis)} />
         <Stat
           label="Open P/L"
-          value={signedMoney(totalPnl)}
-          tone={totalPnl >= 0 ? "up" : "down"}
+          value={signedMoney(s.openPnl)}
+          tone={s.openPnl >= 0 ? "up" : "down"}
         />
       </div>
 
@@ -78,65 +114,8 @@ export default function PortfolioPage() {
         </h2>
         {positionsQuery.isLoading ? (
           <div className="card py-10 text-center text-sm text-ink-faint">Loading positions…</div>
-        ) : enriched.length === 0 ? (
-          <div className="card py-10 text-center text-sm text-ink-dim">
-            No open positions.{" "}
-            <Link href="/" className="text-brand hover:underline">
-              Find a market
-            </Link>{" "}
-            to get started.
-          </div>
         ) : (
-          <div className="card overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-faint">
-                  <th className="px-4 py-3 font-medium">Market</th>
-                  <th className="px-4 py-3 font-medium">Outcome</th>
-                  <th className="px-4 py-3 text-right font-medium">Shares</th>
-                  <th className="px-4 py-3 text-right font-medium">Avg</th>
-                  <th className="px-4 py-3 text-right font-medium">Now</th>
-                  <th className="px-4 py-3 text-right font-medium">Value</th>
-                  <th className="px-4 py-3 text-right font-medium">P/L</th>
-                </tr>
-              </thead>
-              <tbody>
-                {enriched.map(({ p, m, price, value, pnl }: any) => (
-                  <tr key={p.id} className="border-b border-border/60 last:border-0">
-                    <td className="max-w-[240px] px-4 py-3">
-                      <Link href={`/market/${m.id}`} className="line-clamp-1 hover:text-brand">
-                        {m.question}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={clsx(
-                          "rounded-full px-2 py-0.5 text-xs font-semibold",
-                          p.outcome === "yes"
-                            ? "bg-yes/15 text-yes-text"
-                            : "bg-no/15 text-no-text"
-                        )}
-                      >
-                        {p.outcome.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">{formatShares(p.shares)}</td>
-                    <td className="px-4 py-3 text-right text-ink-dim">{toCents(p.avg_price)}</td>
-                    <td className="px-4 py-3 text-right">{toCents(price)}</td>
-                    <td className="px-4 py-3 text-right font-medium">{formatMoney(value)}</td>
-                    <td
-                      className={clsx(
-                        "px-4 py-3 text-right font-semibold",
-                        pnl >= 0 ? "text-yes-text" : "text-no-text"
-                      )}
-                    >
-                      {signedMoney(pnl)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <PositionsTable rows={enriched} />
         )}
       </section>
 
@@ -154,7 +133,7 @@ export default function PortfolioPage() {
                 <span
                   className={clsx(
                     "rounded-md px-1.5 py-0.5 text-xs font-semibold capitalize",
-                    t.side === "buy" ? "bg-brand/15 text-brand" : "bg-yellow-500/15 text-yellow-300"
+                    t.side === "buy" ? "bg-brand/15 text-brand-light" : "bg-yellow-500/15 text-yellow-300"
                   )}
                 >
                   {t.side}
@@ -164,11 +143,12 @@ export default function PortfolioPage() {
                     {t.markets?.question ?? "Market"}
                   </Link>
                   <span className="text-xs text-ink-faint">
-                    {formatShares(t.shares)} {t.outcome.toUpperCase()} @ {toCents(t.shares > 0 ? t.cost / t.shares : 0)}
+                    {formatShares(t.shares)} {t.outcome.toUpperCase()} @{" "}
+                    {toCents(t.shares > 0 ? t.cost / t.shares : 0)}
                   </span>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div className="font-medium">{formatMoney(t.cost)}</div>
+                  <div className="font-medium tabular-nums">{formatMoney(t.cost)}</div>
                   <div className="text-xs text-ink-faint">{timeAgo(t.created_at)}</div>
                 </div>
               </div>
@@ -176,7 +156,7 @@ export default function PortfolioPage() {
           </div>
         )}
       </section>
-    </div>
+    </FadeIn>
   );
 }
 
@@ -194,7 +174,7 @@ function Stat({
       <div className="text-xs font-medium uppercase tracking-wide text-ink-faint">{label}</div>
       <div
         className={clsx(
-          "mt-1 text-lg font-bold",
+          "mt-1 text-lg font-bold tabular-nums",
           tone === "up" ? "text-yes-text" : tone === "down" ? "text-no-text" : "text-ink"
         )}
       >
