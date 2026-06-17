@@ -232,18 +232,20 @@ function MarketEditor({ market, onDone }: { market: Market; onDone: () => void }
         placeholder="Description"
       />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <input
-          list="market-categories-edit"
+        <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          placeholder="Category"
           className="input"
-        />
-        <datalist id="market-categories-edit">
+        >
+          {category && !categories.some((c) => c.name === category) && (
+            <option value={category}>{category}</option>
+          )}
           {categories.map((c) => (
-            <option key={c.name} value={c.name} />
+            <option key={c.name} value={c.name}>
+              {c.emoji} {c.name}
+            </option>
           ))}
-        </datalist>
+        </select>
         <input
           value={image}
           onChange={(e) => setImage(e.target.value)}
