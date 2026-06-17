@@ -1,6 +1,7 @@
 "use client";
 
-import { CATEGORIES, categoryEmoji } from "@/lib/categories";
+import { CATEGORIES } from "@/lib/categories";
+import { useCategoryEmoji } from "./useCategories";
 import { motion } from "framer-motion";
 import clsx from "clsx";
 
@@ -13,6 +14,7 @@ export default function CategoryPills({
   onChange: (c: string) => void;
   categories?: string[];
 }) {
+  const emojiOf = useCategoryEmoji();
   return (
     <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
       {categories.map((c) => {
@@ -36,7 +38,7 @@ export default function CategoryPills({
               />
             )}
             <span className="relative z-10 flex items-center gap-1">
-              <span>{categoryEmoji(c)}</span>
+              <span>{c === "All" ? "✨" : emojiOf(c)}</span>
               {c}
             </span>
           </button>

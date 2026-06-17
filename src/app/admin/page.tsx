@@ -9,6 +9,7 @@ import {
   ListChecks,
   MessageSquare,
   ShieldCheck,
+  Tags,
   Users,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
@@ -17,11 +18,20 @@ import ManageMarkets from "@/components/admin/ManageMarkets";
 import ManageUsers from "@/components/admin/ManageUsers";
 import ManageSubadmins from "@/components/admin/ManageSubadmins";
 import ManageSuggestions from "@/components/admin/ManageSuggestions";
+import ManageCategories from "@/components/admin/ManageCategories";
 import PrizesEditor from "@/components/admin/PrizesEditor";
 import AdminChat from "@/components/admin/AdminChat";
 import clsx from "clsx";
 
-type Tab = "create" | "markets" | "suggestions" | "users" | "subadmins" | "prizes" | "chat";
+type Tab =
+  | "create"
+  | "markets"
+  | "suggestions"
+  | "users"
+  | "categories"
+  | "subadmins"
+  | "prizes"
+  | "chat";
 
 export default function AdminPage() {
   const { isStaff, isAdmin, loading } = useAuth();
@@ -50,6 +60,7 @@ export default function AdminPage() {
     { id: "markets", label: "Markets", icon: <ListChecks size={16} /> },
     { id: "suggestions", label: "Suggestions", icon: <Lightbulb size={16} /> },
     { id: "users", label: "Users", icon: <Users size={16} /> },
+    { id: "categories", label: "Categories", icon: <Tags size={16} />, adminOnly: true },
     { id: "subadmins", label: "Sub-admins", icon: <ShieldCheck size={16} />, adminOnly: true },
     { id: "prizes", label: "Prizes", icon: <Gift size={16} />, adminOnly: true },
     { id: "chat", label: "Chat", icon: <MessageSquare size={16} /> },
@@ -92,6 +103,7 @@ export default function AdminPage() {
         {activeTab === "markets" && <ManageMarkets />}
         {activeTab === "suggestions" && <ManageSuggestions />}
         {activeTab === "users" && <ManageUsers />}
+        {activeTab === "categories" && isAdmin && <ManageCategories />}
         {activeTab === "subadmins" && isAdmin && <ManageSubadmins />}
         {activeTab === "prizes" && isAdmin && <PrizesEditor />}
         {activeTab === "chat" && <AdminChat />}

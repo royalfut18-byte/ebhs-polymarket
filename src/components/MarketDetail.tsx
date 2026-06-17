@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, BarChart3, CalendarClock, Users } from "lucide-react";
 import { fetchMarket, fetchMarketHolders, fetchMarketTrades } from "@/lib/queries";
-import { categoryEmoji } from "@/lib/categories";
+import { useCategoryEmoji } from "./useCategories";
 import { formatCompact, formatDate } from "@/lib/format";
 import type { Market } from "@/lib/types";
 import PriceChart from "./PriceChart";
@@ -21,6 +21,7 @@ type Tab = "activity" | "holders" | "comments";
 
 export default function MarketDetail({ id }: { id: string }) {
   const [tab, setTab] = useState<Tab>("activity");
+  const emojiOf = useCategoryEmoji();
 
   const marketQuery = useQuery({
     queryKey: ["market", id],
@@ -75,7 +76,7 @@ export default function MarketDetail({ id }: { id: string }) {
           <img src={img} alt="" className="h-16 w-16 rounded-xl object-cover" />
         ) : (
           <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-bg-card text-4xl">
-            {img || categoryEmoji(market.category)}
+            {img || emojiOf(market.category)}
           </div>
         )}
         <div className="min-w-0 flex-1">

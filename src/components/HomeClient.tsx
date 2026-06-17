@@ -4,14 +4,16 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Inbox, Lightbulb, Sparkles, TrendingUp } from "lucide-react";
+import { Flame, Inbox, Lightbulb, Sparkles, TrendingUp } from "lucide-react";
 import { fetchMarkets, fetchMarketStats } from "@/lib/queries";
 import type { Market } from "@/lib/types";
-import { CATEGORIES } from "@/lib/categories";
-import { formatCompact } from "@/lib/format";
+import { formatCompact, toPercent } from "@/lib/format";
+import { priceYes } from "@/lib/lmsr";
 import MarketCard from "./MarketCard";
 import CategoryPills from "./CategoryPills";
+import { useCategories } from "./useCategories";
 import { AnimatedNumber, FadeIn, Stagger, StaggerItem } from "./motion";
+import clsx from "clsx";
 
 const STATUS_RANK: Record<string, number> = { open: 0, closed: 1, resolved: 2, cancelled: 3 };
 
@@ -22,9 +24,19 @@ export default function HomeClient() {
 
   const marketsQuery = useQuery({ queryKey: ["markets"], queryFn: fetchMarkets });
   const statsQuery = useQuery({ queryKey: ["market-stats"], queryFn: fetchMarketStats });
+  const categories = useCategories();
 
   const allMarkets: Market[] = marketsQuery.data ?? [];
   const statsMap = statsQuery.data ?? {};
+
+  // The "hottest" market = highest-volume open market.
+  const trending = useMemo(() => {
+    const open = allMarkets.filter((m) => m.status === "open");
+    if (!open.length) return null;
+    return [...open].sort(
+      (a, b) => (Number(statsMap[b.id]?.volume) || 0) - (Number(statsMap[a.id]?.volume) || 0)
+    )[0];
+  }, [allMarkets, statsMap]);
 
   const totals = useMemo(() => {
     let volume = 0;
@@ -40,12 +52,13 @@ export default function HomeClient() {
   }, [allMarkets, statsMap]);
 
   const categoryList = useMemo(() => {
-    const preset = CATEGORIES as readonly string[];
+    const names = categories.map((c) => c.name);
+    const known = new Set<string>(["All", ...names]);
     const extras = Array.from(new Set(allMarkets.map((m) => m.category))).filter(
-      (c) => c && !preset.includes(c)
+      (c) => c && !known.has(c)
     );
-    return [...preset, ...extras.sort()];
-  }, [allMarkets]);
+    return ["All", ...names, ...extras.sort()];
+  }, [categories, allMarkets]);
 
   const markets = useMemo(() => {
     return allMarkets
@@ -84,13 +97,39 @@ export default function HomeClient() {
                 Trade YES/NO on everything happening at EBHS. Prices are live probabilities — your
                 trades move the market. Climb the leaderboard. 🏆
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-6 flex flex-wrap items-center gap-3">
                 <a href="#markets" className="btn btn-primary">
                   <TrendingUp size={16} /> Browse markets
                 </a>
                 <Link href="/suggest" className="btn btn-ghost">
                   <Lightbulb size={16} /> Suggest a market
                 </Link>
+                {trending && (
+                  <Link
+                    href={`/market/${trending.id}`}
+                    className="group inline-flex items-center gap-2.5 rounded-xl border border-orange-400/30 bg-orange-400/[0.08] px-3 py-1.5 transition-colors hover:bg-orange-400/[0.16]"
+                  >
+                    <Flame size={16} className="shrink-0 animate-pulse text-orange-400" />
+                    <div className="min-w-0 text-left">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-orange-300">
+                        🔥 Trending
+                      </div>
+                      <div className="max-w-[170px] truncate text-sm font-semibold text-ink group-hover:text-white">
+                        {trending.question}
+                      </div>
+                    </div>
+                    <span
+                      className={clsx(
+                        "ml-1 shrink-0 text-sm font-bold",
+                        priceYes(trending.q_yes, trending.q_no, trending.b) >= 0.5
+                          ? "text-yes-text"
+                          : "text-no-text"
+                      )}
+                    >
+                      {toPercent(priceYes(trending.q_yes, trending.q_no, trending.b))}
+                    </span>
+                  </Link>
+                )}
               </div>
 
               <div className="mt-8 flex gap-8">

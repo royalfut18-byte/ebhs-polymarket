@@ -72,6 +72,12 @@ export interface MarketStat {
   trader_count: number;
 }
 
+export interface Category {
+  name: string;
+  emoji: string;
+  sort_order: number;
+}
+
 export interface LeaderboardRow {
   id: string;
   username: string;

@@ -6,11 +6,12 @@ import { BarChart3, Users } from "lucide-react";
 import type { Market, MarketStat } from "@/lib/types";
 import { priceYes } from "@/lib/lmsr";
 import { formatCompact, toCents, toPercent } from "@/lib/format";
-import { categoryEmoji } from "@/lib/categories";
+import { useCategoryEmoji } from "./useCategories";
 import StatusBadge from "./StatusBadge";
 import clsx from "clsx";
 
 function MarketThumb({ market }: { market: Market }) {
+  const emojiOf = useCategoryEmoji();
   const img = market.image_url?.trim();
   const isUrl = img && /^https?:\/\//i.test(img);
   if (isUrl) {
@@ -19,7 +20,7 @@ function MarketThumb({ market }: { market: Market }) {
   }
   return (
     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-white/[0.08] to-white/[0.02] text-2xl ring-1 ring-border">
-      {img || categoryEmoji(market.category)}
+      {img || emojiOf(market.category)}
     </div>
   );
 }

@@ -1,20 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Info, Loader2 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
-import { MARKET_CATEGORIES } from "@/lib/categories";
+import { useCategories } from "../useCategories";
 import type { Market } from "@/lib/types";
 
 export default function CreateMarketForm() {
   const supabase = getSupabase();
   const queryClient = useQueryClient();
+  const categories = useCategories();
 
   const [question, setQuestion] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<string>(MARKET_CATEGORIES[0]);
+  const [category, setCategory] = useState("");
+
+  // Prefill the category with the first one once they load.
+  useEffect(() => {
+    if (!category && categories.length) setCategory(categories[0].name);
+  }, [categories, category]);
   const [image, setImage] = useState("");
   const [closeAt, setCloseAt] = useState("");
   const [prob, setProb] = useState(50); // starting YES %, 1..99
@@ -91,8 +97,8 @@ export default function CreateMarketForm() {
             className="input"
           />
           <datalist id="market-categories">
-            {MARKET_CATEGORIES.map((c) => (
-              <option key={c} value={c} />
+            {categories.map((c) => (
+              <option key={c.name} value={c.name} />
             ))}
           </datalist>
         </Field>

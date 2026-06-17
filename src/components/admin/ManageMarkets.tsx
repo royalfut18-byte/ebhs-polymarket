@@ -8,10 +8,10 @@ import { getSupabase } from "@/lib/supabase/client";
 import { fetchMarkets } from "@/lib/queries";
 import { priceYes } from "@/lib/lmsr";
 import { toPercent } from "@/lib/format";
-import { MARKET_CATEGORIES } from "@/lib/categories";
 import type { Market } from "@/lib/types";
 import StatusBadge from "@/components/StatusBadge";
 import { useAuth } from "@/components/AuthProvider";
+import { useCategories } from "@/components/useCategories";
 
 export default function ManageMarkets() {
   const supabase = getSupabase();
@@ -194,6 +194,7 @@ function ActionBtn({
 
 function MarketEditor({ market, onDone }: { market: Market; onDone: () => void }) {
   const supabase = getSupabase();
+  const categories = useCategories();
   const [question, setQuestion] = useState(market.question);
   const [description, setDescription] = useState(market.description);
   const [category, setCategory] = useState(market.category);
@@ -239,8 +240,8 @@ function MarketEditor({ market, onDone }: { market: Market; onDone: () => void }
           className="input"
         />
         <datalist id="market-categories-edit">
-          {MARKET_CATEGORIES.map((c) => (
-            <option key={c} value={c} />
+          {categories.map((c) => (
+            <option key={c.name} value={c.name} />
           ))}
         </datalist>
         <input

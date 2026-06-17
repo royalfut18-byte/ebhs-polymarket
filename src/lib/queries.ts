@@ -4,6 +4,7 @@
 import { getSupabase } from "./supabase/client";
 import type {
   AdminMessage,
+  Category,
   CommentWithProfile,
   LeaderboardRow,
   Market,
@@ -26,6 +27,16 @@ export async function fetchMarkets(): Promise<Market[]> {
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data as Market[]) ?? [];
+}
+
+export async function fetchCategories(): Promise<Category[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  return (data as Category[]) ?? [];
 }
 
 export async function fetchMarketStats(): Promise<Record<string, MarketStat>> {
