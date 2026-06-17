@@ -109,7 +109,9 @@ export default function PortfolioPage() {
       </div>
 
       {/* Weekly spin */}
-      <SpinWheel />
+      <div id="spin" className="scroll-mt-24">
+        <SpinWheel />
+      </div>
 
       {/* Positions */}
       <section className="flex flex-col gap-3">

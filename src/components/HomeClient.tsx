@@ -12,6 +12,7 @@ import { priceYes } from "@/lib/lmsr";
 import MarketCard from "./MarketCard";
 import GroupedMarketCard from "./GroupedMarketCard";
 import CategoryPills from "./CategoryPills";
+import AnnouncementBanner from "./AnnouncementBanner";
 import { useCategories, useCategoryEmoji } from "./useCategories";
 import { AnimatedNumber, FadeIn, Stagger, StaggerItem, motion } from "./motion";
 import clsx from "clsx";
@@ -132,6 +133,7 @@ export default function HomeClient() {
 
   return (
     <div className="flex flex-col gap-6">
+      {!q && <AnnouncementBanner />}
       {!q && (
         <FadeIn>
           <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-white/[0.05] via-white/[0.02] to-transparent p-7 sm:p-10">

@@ -85,6 +85,15 @@ export default function SpinWheel() {
     window.setTimeout(async () => {
       setSpinning(false);
       setResult(prize);
+      if (prize > 0) {
+        const confetti = (await import("canvas-confetti")).default;
+        const colors = ["#fbbf24", "#a855f7", "#5b7cfa", "#22d3ee", "#22c55e"];
+        confetti({ particleCount: 150, spread: 75, startVelocity: 45, origin: { y: 0.7 }, colors });
+        window.setTimeout(
+          () => confetti({ particleCount: 90, spread: 110, scalar: 0.9, origin: { y: 0.6 }, colors }),
+          250
+        );
+      }
       await refreshProfile();
       queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
       queryClient.invalidateQueries({ queryKey: ["portfolio-positions", profile.id] });
