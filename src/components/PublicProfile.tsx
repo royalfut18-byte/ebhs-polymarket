@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, TrendingDown, TrendingUp } from "lucide-react";
-import { fetchProfileByUsername, fetchUserPositions } from "@/lib/queries";
+import { fetchProfileByUsername, fetchUserPositions, fetchUserTrades } from "@/lib/queries";
 import { enrichPositions, summarize } from "@/lib/pnl";
-import { formatMoney, signedMoney, signedPct } from "@/lib/format";
+import { formatMoney, formatShares, signedMoney, signedPct, timeAgo, toCents } from "@/lib/format";
 import Avatar from "./Avatar";
 import PositionsTable from "./PositionsTable";
 import { FadeIn } from "./motion";
@@ -22,6 +22,11 @@ export default function PublicProfile({ username }: { username: string }) {
     queryKey: ["public-positions", profile?.id],
     enabled: !!profile,
     queryFn: () => fetchUserPositions(profile!.id),
+  });
+  const tradesQuery = useQuery({
+    queryKey: ["public-trades", profile?.id],
+    enabled: !!profile,
+    queryFn: () => fetchUserTrades(profile!.id),
   });
 
   if (profileQuery.isLoading) {
@@ -95,6 +100,47 @@ export default function PublicProfile({ username }: { username: string }) {
           <div className="card py-10 text-center text-sm text-ink-faint">Loading…</div>
         ) : (
           <PositionsTable rows={enriched} />
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-faint">
+          Trade history
+        </h2>
+        {tradesQuery.isLoading ? (
+          <div className="card py-10 text-center text-sm text-ink-faint">Loading…</div>
+        ) : (tradesQuery.data ?? []).length === 0 ? (
+          <div className="card py-10 text-center text-sm text-ink-dim">No trades yet.</div>
+        ) : (
+          <div className="card divide-y divide-border">
+            {(tradesQuery.data ?? []).map((t) => (
+              <div key={t.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                <span
+                  className={clsx(
+                    "rounded-md px-1.5 py-0.5 text-xs font-semibold capitalize",
+                    t.side === "buy"
+                      ? "bg-brand/15 text-brand-light"
+                      : "bg-yellow-500/15 text-yellow-300"
+                  )}
+                >
+                  {t.side}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <Link href={`/market/${t.market_id}`} className="line-clamp-1 hover:text-brand">
+                    {t.markets?.question ?? "Market"}
+                  </Link>
+                  <span className="text-xs text-ink-faint">
+                    {formatShares(t.shares)} {t.outcome.toUpperCase()} @{" "}
+                    {toCents(t.shares > 0 ? t.cost / t.shares : 0)}
+                  </span>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="font-medium tabular-nums">{formatMoney(t.cost)}</div>
+                  <div className="text-xs text-ink-faint">{timeAgo(t.created_at)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </section>
     </FadeIn>
