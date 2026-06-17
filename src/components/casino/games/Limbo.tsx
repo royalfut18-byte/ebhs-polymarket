@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { animate } from "framer-motion";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
+import { celebrate } from "@/lib/casino/celebrate";
 import { formatMoney } from "@/lib/format";
 import GameShell from "../GameShell";
 import BetAmount from "../BetAmount";
@@ -42,6 +43,7 @@ export default function Limbo() {
     try {
       const r = await play<LimboResult>("casino_limbo", { p_bet: amount, p_target: target });
       setResult(r);
+      if (r.win) setTimeout(() => celebrate(target >= 5), 900);
     } catch {
       /* surfaced by hook */
     }
@@ -50,8 +52,6 @@ export default function Limbo() {
   return (
     <GameShell
       game="limbo"
-      title="Limbo"
-      emoji="📈"
       controls={
         <>
           <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={busy} />

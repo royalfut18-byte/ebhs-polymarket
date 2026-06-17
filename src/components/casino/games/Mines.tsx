@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { Bomb, Gem } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
+import { celebrate } from "@/lib/casino/celebrate";
 import { formatMoney } from "@/lib/format";
 import GameShell from "../GameShell";
 import BetAmount from "../BetAmount";
@@ -64,6 +66,7 @@ export default function Mines() {
         setMines(new Set(r.mines ?? []));
         setMult(r.multiplier ?? mult);
         setEnded({ win: true, payout: r.payout ?? 0 });
+        celebrate(true);
       } else {
         setSafe((p) => new Set(p).add(tile));
         setMult(r.multiplier ?? mult);
@@ -83,6 +86,7 @@ export default function Mines() {
       setMines(new Set(r.mines));
       setMult(r.multiplier);
       setEnded({ win: true, payout: r.payout });
+      celebrate(r.multiplier >= 3);
     } catch {
       /* surfaced */
     }
@@ -91,8 +95,6 @@ export default function Mines() {
   return (
     <GameShell
       game="mines"
-      title="Mines"
-      emoji="💣"
       controls={
         <>
           <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={active || busy} />
@@ -159,17 +161,30 @@ export default function Mines() {
               key={t}
               onClick={() => reveal(t)}
               disabled={!active || isSafe || busy}
-              whileHover={active && !isSafe ? { scale: 1.05 } : {}}
+              whileHover={active && !isSafe ? { scale: 1.06, y: -2 } : {}}
               whileTap={active && !isSafe ? { scale: 0.92 } : {}}
               className={clsx(
-                "flex aspect-square items-center justify-center rounded-xl text-2xl font-bold transition-colors",
-                !revealed && "border border-border bg-bg-soft/70 hover:bg-white/[0.08]",
+                "flex aspect-square items-center justify-center rounded-xl transition-colors",
+                !revealed &&
+                  "border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:from-white/[0.12]",
                 isSafe && "bg-yes/20 ring-1 ring-yes/40",
                 ended && isMine && (isHit ? "bg-no/30 ring-2 ring-no" : "bg-no/15"),
                 !active && !ended && "opacity-60"
               )}
             >
-              {isSafe ? "💎" : ended && isMine ? "💣" : ""}
+              {revealed && (
+                <motion.span
+                  initial={{ rotateY: 90, scale: 0.5, opacity: 0 }}
+                  animate={{ rotateY: 0, scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 260, damping: 16 }}
+                >
+                  {isSafe ? (
+                    <Gem className="text-yes-text drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" size={26} />
+                  ) : isMine ? (
+                    <Bomb className={clsx(isHit ? "text-no-text" : "text-no-text/70")} size={26} />
+                  ) : null}
+                </motion.span>
+              )}
             </motion.button>
           );
         })}

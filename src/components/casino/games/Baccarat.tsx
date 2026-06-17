@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
+import { celebrate } from "@/lib/casino/celebrate";
 import { formatMoney } from "@/lib/format";
 import type { Card } from "@/lib/types";
 import GameShell from "../GameShell";
@@ -40,6 +41,7 @@ export default function Baccarat() {
     try {
       const r = await play<BaccaratResult>("casino_baccarat", { p_bet: amount, p_side: side });
       setResult(r);
+      if (r.payout > amount) celebrate(r.side === "tie");
     } catch {
       /* surfaced by hook */
     }
@@ -48,8 +50,6 @@ export default function Baccarat() {
   return (
     <GameShell
       game="baccarat"
-      title="Baccarat"
-      emoji="👑"
       controls={
         <>
           <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={busy} />

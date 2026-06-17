@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
+import { celebrate } from "@/lib/casino/celebrate";
 import { formatMoney } from "@/lib/format";
 import type { Card } from "@/lib/types";
 import GameShell from "../GameShell";
@@ -60,6 +61,7 @@ export default function HiLo() {
     try {
       const r = await play<{ payout: number }>("casino_hilo_cashout", { p_round: roundId });
       setEnded({ win: true, payout: r.payout });
+      celebrate(mult >= 4);
     } catch {
       /* surfaced */
     }
@@ -68,8 +70,6 @@ export default function HiLo() {
   return (
     <GameShell
       game="hilo"
-      title="Hi-Lo"
-      emoji="🔼"
       controls={
         <>
           <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={active || busy} />

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
+import { celebrate } from "@/lib/casino/celebrate";
 import { formatMoney } from "@/lib/format";
 import type { Card } from "@/lib/types";
 import GameShell from "../GameShell";
@@ -40,10 +41,15 @@ export default function Blackjack() {
 
   const active = state?.status === "active" && !state.done;
 
+  function maybeCelebrate(r: BjState) {
+    if (r.done && (r.status === "won" || r.status === "blackjack")) celebrate(r.status === "blackjack");
+  }
+
   async function deal() {
     try {
       const r = await play<BjState>("casino_bj_start", { p_bet: amount });
       setState(r);
+      maybeCelebrate(r);
     } catch {
       /* surfaced */
     }
@@ -54,6 +60,7 @@ export default function Blackjack() {
     try {
       const r = await play<BjState>("casino_bj_action", { p_round: state.round_id, p_action: a });
       setState(r);
+      maybeCelebrate(r);
     } catch {
       /* surfaced */
     }
@@ -62,8 +69,6 @@ export default function Blackjack() {
   return (
     <GameShell
       game="blackjack"
-      title="Blackjack"
-      emoji="🃏"
       controls={
         <>
           <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={active || busy} />

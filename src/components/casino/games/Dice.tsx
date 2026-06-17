@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
+import { celebrate } from "@/lib/casino/celebrate";
 import { formatMoney } from "@/lib/format";
 import GameShell from "../GameShell";
 import BetAmount from "../BetAmount";
@@ -38,6 +39,7 @@ export default function Dice() {
         p_over: over,
       });
       setResult(r);
+      if (r.win) celebrate(r.multiplier >= 5);
     } catch {
       /* error surfaced by hook */
     }
@@ -48,8 +50,6 @@ export default function Dice() {
   return (
     <GameShell
       game="dice"
-      title="Dice"
-      emoji="🎲"
       controls={
         <>
           <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={busy} />

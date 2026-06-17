@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
+import { celebrate } from "@/lib/casino/celebrate";
 import { formatMoney } from "@/lib/format";
 import GameShell from "../GameShell";
 import BetAmount from "../BetAmount";
@@ -47,6 +48,7 @@ export default function Keno() {
     try {
       const r = await play<KenoResult>("casino_keno", { p_bet: amount, p_picks: picks });
       setResult(r);
+      if (r.payout > 0) celebrate(r.multiplier >= 10);
     } catch {
       /* surfaced by hook */
     }
@@ -57,8 +59,6 @@ export default function Keno() {
   return (
     <GameShell
       game="keno"
-      title="Keno"
-      emoji="🔢"
       controls={
         <>
           <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={busy} />

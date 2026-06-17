@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { Rocket } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
 import { CRASH_K } from "@/lib/casino/games";
+import { celebrate } from "@/lib/casino/celebrate";
 import { formatMoney } from "@/lib/format";
 import GameShell from "../GameShell";
 import BetAmount from "../BetAmount";
@@ -81,6 +83,7 @@ export default function Crash() {
       );
       setDisplay(r.status === "cashed" ? r.multiplier : r.crash);
       setEnded({ win: r.status === "cashed", multiplier: r.multiplier, crash: r.crash, payout: r.payout });
+      if (r.status === "cashed") celebrate(r.multiplier >= 5);
     } catch {
       /* surfaced */
     } finally {
@@ -91,8 +94,6 @@ export default function Crash() {
   return (
     <GameShell
       game="crash"
-      title="Crash"
-      emoji="🚀"
       controls={
         <>
           <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={running || busy} />
@@ -146,36 +147,86 @@ export default function Crash() {
         </>
       }
     >
-      <div className="relative flex h-full min-h-[300px] flex-col items-center justify-center overflow-hidden">
-        <div
-          className={clsx(
-            "pointer-events-none absolute inset-0 transition-opacity duration-300",
-            running ? "opacity-100" : "opacity-40"
+      <motion.div
+        animate={ended && !ended.win ? { x: [0, -8, 7, -5, 4, 0] } : { x: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative flex h-full min-h-[320px] flex-col items-center justify-center overflow-hidden"
+      >
+        <CrashChart m={display} state={ended ? (ended.win ? "cashed" : "lost") : running ? "running" : "idle"} />
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          <div
+            className={clsx(
+              "text-7xl font-black tabular-nums drop-shadow-[0_4px_18px_rgba(0,0,0,0.5)] sm:text-8xl",
+              ended && !ended.win ? "text-no-text" : running ? "text-white" : "text-ink-faint"
+            )}
+          >
+            {display.toFixed(2)}×
+          </div>
+          {ended && !ended.win && (
+            <div className="mt-1 text-sm font-bold uppercase tracking-widest text-no-text">Busted</div>
           )}
-          style={{
-            background:
-              "radial-gradient(40rem 30rem at 50% 120%, rgba(244,63,94,0.18), transparent 60%)",
-          }}
-        />
-        <Rocket
-          size={40}
-          className={clsx(
-            "relative mb-2 transition-colors",
-            ended && !ended.win ? "text-no-text" : running ? "animate-bounce text-rose-300" : "text-ink-faint"
+          {!running && !ended && (
+            <p className="mt-2 text-sm text-ink-faint">Place a bet and ride the rocket</p>
           )}
-        />
-        <div
-          className={clsx(
-            "relative text-7xl font-black tabular-nums sm:text-8xl",
-            ended && !ended.win ? "text-no-text" : running ? "text-ink" : "text-ink-faint"
-          )}
-        >
-          {display.toFixed(2)}×
         </div>
-        {!running && !ended && (
-          <p className="relative mt-2 text-sm text-ink-faint">Place a bet and ride the rocket 🚀</p>
-        )}
-      </div>
+      </motion.div>
     </GameShell>
+  );
+}
+
+// Self-scaling exponential curve that always frames the current multiplier,
+// with a glowing comet tip + rocket. Mirrors the server growth m = e^(k·t).
+function CrashChart({ m, state }: { m: number; state: "idle" | "running" | "cashed" | "lost" }) {
+  const W = 100;
+  const H = 60;
+  const N = 36;
+  const stroke = state === "lost" ? "#fb7185" : state === "cashed" ? "#34d399" : "#fbbf24";
+
+  let d = `M0,${H}`;
+  let tipX = 0;
+  let tipY = H;
+  if (m > 1.0001) {
+    const tNow = Math.log(m) / CRASH_K;
+    for (let i = 1; i <= N; i++) {
+      const t = (i / N) * tNow;
+      const mi = Math.exp(CRASH_K * t);
+      const x = (i / N) * W;
+      const y = H - ((mi - 1) / (m - 1)) * H;
+      d += ` L${x.toFixed(2)},${y.toFixed(2)}`;
+      tipX = x;
+      tipY = y;
+    }
+  }
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+      <defs>
+        <linearGradient id="crashFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={stroke} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {/* gridlines */}
+      {[0.25, 0.5, 0.75].map((g) => (
+        <line key={g} x1="0" y1={H * g} x2={W} y2={H * g} stroke="rgba(255,255,255,0.05)" strokeWidth="0.3" />
+      ))}
+      {m > 1.0001 && (
+        <>
+          <path d={`${d} L${tipX},${H} L0,${H} Z`} fill="url(#crashFill)" />
+          <path d={d} fill="none" stroke={stroke} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx={tipX} cy={tipY} r="2.2" fill={stroke}>
+            {state === "running" && <animate attributeName="r" values="2;3;2" dur="0.9s" repeatCount="indefinite" />}
+          </circle>
+          <g transform={`translate(${tipX - 4}, ${tipY - 8})`}>
+            <Rocket
+              width={7}
+              height={7}
+              color="#fff"
+              style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" }}
+            />
+          </g>
+        </>
+      )}
+    </svg>
   );
 }

@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
+import { celebrate } from "@/lib/casino/celebrate";
 import { formatMoney } from "@/lib/format";
 import GameShell from "../GameShell";
 import BetAmount from "../BetAmount";
+import RouletteWheel from "../RouletteWheel";
 import clsx from "clsx";
 
 const RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
@@ -32,6 +33,7 @@ export default function Roulette() {
   const [amount, setAmount] = useState(10);
   const [chips, setChips] = useState<Record<string, Bet>>({});
   const [result, setResult] = useState<RouletteResult | null>(null);
+  const [nonce, setNonce] = useState(0);
 
   const total = useMemo(() => Object.values(chips).reduce((s, b) => s + b.amount, 0), [chips]);
 
@@ -51,6 +53,8 @@ export default function Roulette() {
     try {
       const r = await play<RouletteResult>("casino_roulette", { p_bets: bets });
       setResult(r);
+      setNonce((n) => n + 1);
+      if (r.payout > 0) setTimeout(() => celebrate(r.payout >= r.total * 5), 4200);
     } catch {
       /* surfaced by hook */
     }
@@ -81,8 +85,6 @@ export default function Roulette() {
   return (
     <GameShell
       game="roulette"
-      title="Roulette"
-      emoji="🎡"
       controls={
         <>
           <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={busy} label="Chip size" />
@@ -125,22 +127,21 @@ export default function Roulette() {
       }
     >
       <div className="flex h-full flex-col gap-5">
-        <div className="flex flex-col items-center justify-center gap-2 py-2">
-          <motion.div
-            key={result ? `${result.spin}-${Math.random()}` : "idle"}
-            initial={{ scale: 0.6, rotate: -30, opacity: 0 }}
-            animate={{ scale: 1, rotate: 0, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 200, damping: 16 }}
-            className={clsx(
-              "flex h-24 w-24 items-center justify-center rounded-full text-4xl font-black shadow-card",
-              result ? colorOf(result.spin) : "border border-border bg-bg-soft text-ink-faint"
-            )}
-          >
-            {result ? result.spin : "?"}
-          </motion.div>
+        <div className="flex flex-col items-center justify-center gap-3 py-2">
+          <RouletteWheel result={result?.spin ?? null} nonce={nonce} />
           {result && (
-            <div className={clsx("text-sm font-semibold", result.payout > 0 ? "text-yes-text" : "text-no-text")}>
-              {result.payout > 0 ? `Won ${formatMoney(result.payout)} 🎉` : "No win this spin"}
+            <div className="flex items-center gap-2">
+              <span
+                className={clsx(
+                  "flex h-9 min-w-9 items-center justify-center rounded-lg px-2 text-lg font-black",
+                  colorOf(result.spin)
+                )}
+              >
+                {result.spin}
+              </span>
+              <span className={clsx("text-sm font-semibold", result.payout > 0 ? "text-yes-text" : "text-no-text")}>
+                {result.payout > 0 ? `Won ${formatMoney(result.payout)}` : "No win this spin"}
+              </span>
             </div>
           )}
         </div>
