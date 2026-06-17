@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Pencil } from "lucide-react";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
 import { fetchMarkets } from "@/lib/queries";
 import { priceYes } from "@/lib/lmsr";
@@ -11,10 +11,12 @@ import { toPercent } from "@/lib/format";
 import { MARKET_CATEGORIES } from "@/lib/categories";
 import type { Market } from "@/lib/types";
 import StatusBadge from "@/components/StatusBadge";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function ManageMarkets() {
   const supabase = getSupabase();
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
   const { data: markets = [], isLoading } = useQuery({
     queryKey: ["markets"],
     queryFn: fetchMarkets,
@@ -76,8 +78,10 @@ export default function ManageMarkets() {
               {busy && <Loader2 size={18} className="animate-spin text-ink-faint" />}
             </div>
 
-            {!settled && (
+            {(!settled || isAdmin) && (
               <div className="mt-3 flex flex-wrap gap-2">
+                {!settled && (
+                  <>
                 <button
                   onClick={() => setEditId(editId === m.id ? null : m.id)}
                   className="btn btn-ghost px-3 py-1.5 text-xs"
@@ -138,6 +142,25 @@ export default function ManageMarkets() {
                 >
                   Cancel
                 </ActionBtn>
+                  </>
+                )}
+                {isAdmin && (
+                  <ActionBtn
+                    onClick={() => {
+                      if (
+                        confirm(
+                          "Permanently DELETE this market? Any holders are refunded their cost basis. This cannot be undone."
+                        )
+                      ) {
+                        run(m.id, () => supabase.rpc("delete_market", { p_market_id: m.id }));
+                      }
+                    }}
+                    disabled={busy}
+                    className="border border-no/40 bg-no/10 text-no-text hover:bg-no/25"
+                  >
+                    <Trash2 size={13} /> Delete
+                  </ActionBtn>
+                )}
               </div>
             )}
 
