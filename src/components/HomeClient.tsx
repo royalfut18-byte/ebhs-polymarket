@@ -6,16 +6,30 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Flame, Inbox, Lightbulb, Sparkles, TrendingUp } from "lucide-react";
 import { fetchMarkets, fetchMarketStats } from "@/lib/queries";
-import type { Market, MarketStat } from "@/lib/types";
+import type { Market, MarketStat, MarketStatus } from "@/lib/types";
 import { formatCompact, toCents, toPercent } from "@/lib/format";
 import { priceYes } from "@/lib/lmsr";
 import MarketCard from "./MarketCard";
+import GroupedMarketCard from "./GroupedMarketCard";
 import CategoryPills from "./CategoryPills";
 import { useCategories, useCategoryEmoji } from "./useCategories";
 import { AnimatedNumber, FadeIn, Stagger, StaggerItem, motion } from "./motion";
 import clsx from "clsx";
 
 const STATUS_RANK: Record<string, number> = { open: 0, closed: 1, resolved: 2, cancelled: 3 };
+
+type DisplayItem =
+  | { kind: "single"; market: Market }
+  | {
+      kind: "group";
+      groupId: string;
+      title: string;
+      category: string;
+      imageUrl: string | null;
+      status: MarketStatus;
+      options: Market[];
+      created: number;
+    };
 
 export default function HomeClient() {
   const searchParams = useSearchParams();
@@ -29,9 +43,9 @@ export default function HomeClient() {
   const allMarkets: Market[] = marketsQuery.data ?? [];
   const statsMap = statsQuery.data ?? {};
 
-  // The "hottest" market = highest-volume open market.
+  // The "hottest" market = highest-volume open standalone market.
   const trending = useMemo(() => {
-    const open = allMarkets.filter((m) => m.status === "open");
+    const open = allMarkets.filter((m) => m.status === "open" && !m.group_id);
     if (!open.length) return null;
     return [...open].sort(
       (a, b) => (Number(statsMap[b.id]?.volume) || 0) - (Number(statsMap[a.id]?.volume) || 0)
@@ -41,14 +55,18 @@ export default function HomeClient() {
   const totals = useMemo(() => {
     let volume = 0;
     let trades = 0;
+    let singles = 0;
+    const groups = new Set<string>();
     for (const m of allMarkets) {
       const s = statsMap[m.id];
       if (s) {
         volume += Number(s.volume) || 0;
         trades += Number(s.trade_count) || 0;
       }
+      if (m.group_id) groups.add(m.group_id);
+      else singles++;
     }
-    return { markets: allMarkets.length, volume, trades };
+    return { markets: singles + groups.size, volume, trades };
   }, [allMarkets, statsMap]);
 
   const categoryList = useMemo(() => {
@@ -60,22 +78,56 @@ export default function HomeClient() {
     return ["All", ...names, ...extras.sort()];
   }, [categories, allMarkets]);
 
-  const markets = useMemo(() => {
-    return allMarkets
+  const items = useMemo<DisplayItem[]>(() => {
+    const filtered = allMarkets
       .filter((m) => (category === "All" ? true : m.category === category))
       .filter((m) => {
         if (!q) return true;
         return (
           m.question.toLowerCase().includes(q) ||
           m.description.toLowerCase().includes(q) ||
-          m.category.toLowerCase().includes(q)
+          m.category.toLowerCase().includes(q) ||
+          (m.group_title?.toLowerCase().includes(q) ?? false) ||
+          (m.option_label?.toLowerCase().includes(q) ?? false)
         );
-      })
-      .sort((a, b) => {
-        const r = (STATUS_RANK[a.status] ?? 9) - (STATUS_RANK[b.status] ?? 9);
-        if (r !== 0) return r;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
+
+    const groupsMap = new Map<string, Market[]>();
+    const list: DisplayItem[] = [];
+    for (const m of filtered) {
+      if (m.group_id) {
+        const arr = groupsMap.get(m.group_id);
+        if (arr) arr.push(m);
+        else groupsMap.set(m.group_id, [m]);
+      } else {
+        list.push({ kind: "single", market: m });
+      }
+    }
+    for (const [gid, opts] of groupsMap) {
+      const rep = opts[0];
+      const status: MarketStatus = opts.some((o) => o.status === "open") ? "open" : rep.status;
+      const created = Math.max(...opts.map((o) => new Date(o.created_at).getTime()));
+      list.push({
+        kind: "group",
+        groupId: gid,
+        title: rep.group_title ?? rep.question,
+        category: rep.category,
+        imageUrl: rep.image_url,
+        status,
+        options: opts,
+        created,
+      });
+    }
+
+    return list.sort((a, b) => {
+      const sa = a.kind === "single" ? a.market.status : a.status;
+      const sb = b.kind === "single" ? b.market.status : b.status;
+      const r = (STATUS_RANK[sa] ?? 9) - (STATUS_RANK[sb] ?? 9);
+      if (r !== 0) return r;
+      const ta = a.kind === "single" ? new Date(a.market.created_at).getTime() : a.created;
+      const tb = b.kind === "single" ? new Date(b.market.created_at).getTime() : b.created;
+      return tb - ta;
+    });
   }, [allMarkets, category, q]);
 
   return (
@@ -137,15 +189,29 @@ export default function HomeClient() {
           <ErrorState />
         ) : marketsQuery.isLoading ? (
           <Skeletons />
-        ) : markets.length === 0 ? (
+        ) : items.length === 0 ? (
           <EmptyState />
         ) : (
           <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {markets.map((m) => (
-              <StaggerItem key={m.id}>
-                <MarketCard market={m} stats={statsMap[m.id]} />
-              </StaggerItem>
-            ))}
+            {items.map((it) =>
+              it.kind === "single" ? (
+                <StaggerItem key={it.market.id}>
+                  <MarketCard market={it.market} stats={statsMap[it.market.id]} />
+                </StaggerItem>
+              ) : (
+                <StaggerItem key={it.groupId}>
+                  <GroupedMarketCard
+                    groupId={it.groupId}
+                    title={it.title}
+                    category={it.category}
+                    imageUrl={it.imageUrl}
+                    status={it.status}
+                    options={it.options}
+                    statsMap={statsMap}
+                  />
+                </StaggerItem>
+              )
+            )}
           </Stagger>
         )}
       </div>

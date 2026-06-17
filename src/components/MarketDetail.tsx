@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BarChart3, CalendarClock, Users } from "lucide-react";
+import { ArrowLeft, BarChart3, CalendarClock, Layers, Users } from "lucide-react";
 import { fetchMarket, fetchMarketHolders, fetchMarketTrades } from "@/lib/queries";
 import { useCategoryEmoji } from "./useCategories";
 import { formatCompact, formatDate } from "@/lib/format";
@@ -83,6 +83,14 @@ export default function MarketDetail({ id }: { id: string }) {
           <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs text-ink-dim">
             <span className="rounded-full bg-bg-card px-2.5 py-1">{market.category}</span>
             <StatusBadge status={market.status} resolution={market.resolution} />
+            {market.group_id && (
+              <Link
+                href={`/group/${market.group_id}`}
+                className="inline-flex items-center gap-1 rounded-full bg-accent-violet/15 px-2.5 py-1 font-medium text-accent-violet hover:bg-accent-violet/25"
+              >
+                <Layers size={12} /> All options
+              </Link>
+            )}
           </div>
           <h1 className="text-xl font-bold leading-tight sm:text-2xl">{market.question}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-faint">

@@ -48,6 +48,17 @@ export async function fetchMarketStats(): Promise<Record<string, MarketStat>> {
   return map;
 }
 
+export async function fetchGroupMarkets(groupId: string): Promise<Market[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("markets")
+    .select("*")
+    .eq("group_id", groupId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as Market[]) ?? [];
+}
+
 export async function fetchMarket(id: string): Promise<Market> {
   const supabase = getSupabase();
   const { data, error } = await supabase.from("markets").select("*").eq("id", id).single();

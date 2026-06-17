@@ -31,6 +31,10 @@ export interface Market {
   close_at: string | null;
   created_at: string;
   resolved_at: string | null;
+  // Multi-outcome (grouped) markets: null for standalone binary markets.
+  group_id: string | null;
+  group_title: string | null;
+  option_label: string | null;
 }
 
 export interface Position {
