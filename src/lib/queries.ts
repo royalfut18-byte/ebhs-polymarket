@@ -4,6 +4,8 @@
 import { getSupabase } from "./supabase/client";
 import type {
   AdminMessage,
+  CasinoBet,
+  CasinoGame,
   Category,
   CommentWithProfile,
   LeaderboardRow,
@@ -214,6 +216,26 @@ export async function fetchSupportInbox(): Promise<SupportMessage[]> {
     .limit(1000);
   if (error) throw error;
   return (data as SupportMessage[]) ?? [];
+}
+
+// A player's own casino bet log (RLS restricts to their own rows). Newest
+// first. Pass a game to filter to one game's recent results.
+export async function fetchCasinoHistory(
+  userId: string,
+  game?: CasinoGame,
+  limit = 50
+): Promise<CasinoBet[]> {
+  const supabase = getSupabase();
+  let query = supabase
+    .from("casino_bets")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (game) query = query.eq("game", game);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data as CasinoBet[]) ?? [];
 }
 
 export async function fetchMarketSuggestions(): Promise<MarketSuggestion[]> {

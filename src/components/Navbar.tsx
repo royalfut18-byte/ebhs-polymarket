@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   Coins,
+  Dice5,
   LayoutDashboard,
   Lightbulb,
   LogOut,
@@ -71,6 +72,12 @@ export default function Navbar() {
         {/* Right side */}
         <nav className="flex shrink-0 items-center gap-2 sm:gap-3">
           <Link
+            href="/casino"
+            className="hidden items-center gap-1.5 text-sm font-medium text-ink-dim hover:text-ink md:flex"
+          >
+            <Dice5 size={16} /> Casino
+          </Link>
+          <Link
             href="/leaderboard"
             className="hidden items-center gap-1.5 text-sm font-medium text-ink-dim hover:text-ink md:flex"
           >
@@ -123,6 +130,9 @@ export default function Navbar() {
                       </div>
                       <MenuItem href="/portfolio" icon={<Wallet size={16} />} onClick={() => setMenuOpen(false)}>
                         Portfolio
+                      </MenuItem>
+                      <MenuItem href="/casino" icon={<Dice5 size={16} />} onClick={() => setMenuOpen(false)}>
+                        Casino
                       </MenuItem>
                       <MenuItem href="/leaderboard" icon={<Trophy size={16} />} onClick={() => setMenuOpen(false)}>
                         Leaderboard

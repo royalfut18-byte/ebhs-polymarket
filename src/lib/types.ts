@@ -170,3 +170,37 @@ export interface Prizes {
   title: string;
   entries: PrizeEntry[];
 }
+
+// ---------------------------------------------------------------------------
+// Casino
+// ---------------------------------------------------------------------------
+
+// A playing card as returned by the casino RPCs: rank 1-13 (1=A, 11=J, 12=Q,
+// 13=K), suit 0-3 (♠ ♥ ♦ ♣).
+export interface Card {
+  r: number;
+  s: number;
+}
+
+export type CasinoGame =
+  | "dice"
+  | "limbo"
+  | "crash"
+  | "mines"
+  | "keno"
+  | "roulette"
+  | "blackjack"
+  | "baccarat"
+  | "hilo";
+
+// A completed bet, logged for the player's history (casino_bets table).
+export interface CasinoBet {
+  id: string;
+  user_id: string;
+  game: CasinoGame;
+  bet: number;
+  payout: number;
+  multiplier: number;
+  result: Record<string, unknown> | null;
+  created_at: string;
+}
