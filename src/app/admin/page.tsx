@@ -60,9 +60,9 @@ export default function AdminPage() {
     { id: "markets", label: "Markets", icon: <ListChecks size={16} /> },
     { id: "suggestions", label: "Suggestions", icon: <Lightbulb size={16} /> },
     { id: "users", label: "Users", icon: <Users size={16} /> },
-    { id: "categories", label: "Categories", icon: <Tags size={16} />, adminOnly: true },
+    { id: "categories", label: "Categories", icon: <Tags size={16} /> },
     { id: "subadmins", label: "Sub-admins", icon: <ShieldCheck size={16} />, adminOnly: true },
-    { id: "prizes", label: "Prizes", icon: <Gift size={16} />, adminOnly: true },
+    { id: "prizes", label: "Prizes", icon: <Gift size={16} /> },
     { id: "chat", label: "Chat", icon: <MessageSquare size={16} /> },
   ];
   const visibleTabs = tabs.filter((t) => !t.adminOnly || isAdmin);
@@ -103,9 +103,9 @@ export default function AdminPage() {
         {activeTab === "markets" && <ManageMarkets />}
         {activeTab === "suggestions" && <ManageSuggestions />}
         {activeTab === "users" && <ManageUsers />}
-        {activeTab === "categories" && isAdmin && <ManageCategories />}
+        {activeTab === "categories" && <ManageCategories />}
         {activeTab === "subadmins" && isAdmin && <ManageSubadmins />}
-        {activeTab === "prizes" && isAdmin && <PrizesEditor />}
+        {activeTab === "prizes" && <PrizesEditor />}
         {activeTab === "chat" && <AdminChat />}
       </div>
     </div>
