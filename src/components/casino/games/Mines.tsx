@@ -150,7 +150,8 @@ export default function Mines() {
         </>
       }
     >
-      <div className="mx-auto grid max-w-[360px] grid-cols-5 gap-2">
+      <div className="flex h-full items-center justify-center">
+        <div className="grid w-full max-w-[380px] grid-cols-5 gap-2.5">
         {TILES.map((t) => {
           const isSafe = safe.has(t);
           const isMine = mines.has(t);
@@ -164,12 +165,12 @@ export default function Mines() {
               whileHover={active && !isSafe ? { scale: 1.06, y: -2 } : {}}
               whileTap={active && !isSafe ? { scale: 0.92 } : {}}
               className={clsx(
-                "flex aspect-square items-center justify-center rounded-xl transition-colors",
+                "flex aspect-square items-center justify-center rounded-xl border transition-colors",
                 !revealed &&
-                  "border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:from-white/[0.12]",
-                isSafe && "bg-yes/20 ring-1 ring-yes/40",
-                ended && isMine && (isHit ? "bg-no/30 ring-2 ring-no" : "bg-no/15"),
-                !active && !ended && "opacity-60"
+                  "border-white/10 bg-gradient-to-b from-[#33405f] to-[#222c45] shadow-[0_3px_0_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.12)] hover:from-[#3d4b6e] hover:to-[#28324e]",
+                isSafe && "border-yes/50 bg-yes/20 shadow-glow-yes",
+                ended && isMine && (isHit ? "border-no bg-no/30 ring-2 ring-no" : "border-no/40 bg-no/15"),
+                !active && !ended && !revealed && "opacity-70"
               )}
             >
               {revealed && (
@@ -188,6 +189,7 @@ export default function Mines() {
             </motion.button>
           );
         })}
+        </div>
       </div>
     </GameShell>
   );
