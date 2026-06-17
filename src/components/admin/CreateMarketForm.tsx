@@ -24,7 +24,7 @@ export default function CreateMarketForm() {
   const [image, setImage] = useState("");
   const [closeAt, setCloseAt] = useState("");
   const [prob, setProb] = useState(50); // starting YES %, 1..99
-  const [b, setB] = useState(100);
+  const [b, setB] = useState(1000);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +59,7 @@ export default function CreateMarketForm() {
     setImage("");
     setCloseAt("");
     setProb(50);
-    setB(100);
+    setB(1000);
     queryClient.invalidateQueries({ queryKey: ["markets"] });
     queryClient.invalidateQueries({ queryKey: ["market-stats"] });
   }
@@ -149,7 +149,7 @@ export default function CreateMarketForm() {
       {/* Liquidity */}
       <Field
         label="Liquidity (b)"
-        hint="Higher = prices move less per trade. 100 is a sensible default."
+        hint="Higher = prices move less per trade. 1000 is a sensible default."
       >
         <input
           type="number"

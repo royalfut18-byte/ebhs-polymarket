@@ -74,7 +74,7 @@ create table if not exists public.markets (
   created_by   uuid references public.profiles(id) on delete set null,
   status       market_status not null default 'open',
   resolution   outcome_type,                             -- null until resolved
-  b            numeric not null default 100,             -- LMSR liquidity param
+  b            numeric not null default 1000,            -- LMSR liquidity param
   q_yes        numeric not null default 0,               -- LMSR yes quantity
   q_no         numeric not null default 0,               -- LMSR no quantity
   initial_prob numeric not null default 0.5,             -- starting YES prob
@@ -478,7 +478,7 @@ begin
   v_p := coalesce(p_initial_prob, 0.5);
   if v_p < 0.01 then v_p := 0.01; end if;
   if v_p > 0.99 then v_p := 0.99; end if;
-  if p_b is null or p_b <= 0 then p_b := 100; end if;
+  if p_b is null or p_b <= 0 then p_b := 1000; end if;
 
   v_qyes := p_b::double precision * ln(v_p / (1 - v_p));
 
