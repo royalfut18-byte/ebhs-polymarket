@@ -62,8 +62,8 @@ begin
   if v_uid is null then raise exception 'You must be logged in.'; end if;
 
   select last_spin_at into v_last from public.profiles where id = v_uid for update;
-  if v_last is not null and v_last > now() - interval '7 days' then
-    raise exception 'You already spun this week. Come back later!';
+  if v_last is not null and v_last > now() - interval '1 day' then
+    raise exception 'You already spun today. Come back tomorrow!';
   end if;
 
   -- weighted: 5% $100, 10% $50, 20% $25, 65% nothing

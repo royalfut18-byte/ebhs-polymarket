@@ -263,6 +263,20 @@ function GroupAdminCard({
     onChange();
   }
 
+  // Resolve a single option independently (winner pays out at 100¢, NO at 0¢).
+  async function resolveOne(marketId: string, res: "yes" | "no", label?: string | null) {
+    if (!confirm(`Resolve "${label}" → ${res.toUpperCase()}?`)) return;
+    setBusy(true);
+    setErr(null);
+    const { error } = await supabase.rpc("resolve_market", {
+      p_market_id: marketId,
+      p_resolution: res,
+    });
+    setBusy(false);
+    if (error) setErr(error.message);
+    else onChange();
+  }
+
   return (
     <div className="card p-4">
       <div className="mb-2 flex items-center gap-2">
@@ -289,8 +303,30 @@ function GroupAdminCard({
               >
                 {o.resolution === "yes" ? "WON" : "LOST"}
               </span>
+            ) : o.status === "cancelled" ? (
+              <span className="text-xs text-ink-faint">cancelled</span>
             ) : (
-              <span className="font-semibold text-ink">{toPercent(displayPriceYes(o))}</span>
+              <>
+                <span className="w-10 text-right font-semibold text-ink">
+                  {toPercent(displayPriceYes(o))}
+                </span>
+                <button
+                  onClick={() => resolveOne(o.id, "yes", o.option_label)}
+                  disabled={busy}
+                  className="rounded bg-yes/15 px-1.5 py-0.5 text-[11px] font-semibold text-yes-text hover:bg-yes/25 disabled:opacity-50"
+                  title="Resolve this option YES"
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={() => resolveOne(o.id, "no", o.option_label)}
+                  disabled={busy}
+                  className="rounded bg-no/15 px-1.5 py-0.5 text-[11px] font-semibold text-no-text hover:bg-no/25 disabled:opacity-50"
+                  title="Resolve this option NO"
+                >
+                  No
+                </button>
+              </>
             )}
           </div>
         ))}

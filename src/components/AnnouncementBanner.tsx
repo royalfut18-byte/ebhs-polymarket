@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 
-const KEY = "ann-spin-wheel-v1";
+const KEY = "ann-spin-wheel-v2";
 
 export default function AnnouncementBanner() {
   const [show, setShow] = useState(false);
@@ -20,9 +20,9 @@ export default function AnnouncementBanner() {
       <div className="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full bg-accent-violet/20 blur-3xl" />
       <span className="relative animate-float text-3xl">🎡</span>
       <div className="relative min-w-0 flex-1">
-        <div className="font-bold text-ink">The weekly Spin to Win is here!</div>
+        <div className="font-bold text-ink">The daily Spin to Win is here!</div>
         <div className="text-sm text-ink-dim">
-          Spin once a week for a shot at $100, $50 or $25 in free credits.
+          Spin once a day for a shot at $100, $50 or $25 in free credits.
         </div>
       </div>
       <Link href="/portfolio#spin" className="btn btn-primary relative shrink-0">

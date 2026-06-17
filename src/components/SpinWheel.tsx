@@ -27,7 +27,7 @@ const SEGMENTS: Segment[] = [
 ];
 const N = SEGMENTS.length;
 const SLICE = 360 / N;
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function slicePath(i: number, r = 92, cx = 100, cy = 100) {
   const a0 = ((i * SLICE - 90) * Math.PI) / 180;
@@ -56,7 +56,7 @@ export default function SpinWheel() {
 
   const nextSpinAt = useMemo(() => {
     if (!profile?.last_spin_at) return 0;
-    return new Date(profile.last_spin_at).getTime() + WEEK_MS;
+    return new Date(profile.last_spin_at).getTime() + DAY_MS;
   }, [profile?.last_spin_at]);
   const onCooldown = Date.now() < nextSpinAt;
 
@@ -105,10 +105,10 @@ export default function SpinWheel() {
       <div className="pointer-events-none absolute -left-16 -top-16 h-48 w-48 rounded-full bg-accent-violet/15 blur-3xl" />
       <div className="relative flex items-center gap-2 self-start">
         <Gift size={18} className="text-accent-violet" />
-        <h2 className="text-lg font-bold">Weekly spin</h2>
+        <h2 className="text-lg font-bold">Daily spin</h2>
       </div>
       <p className="relative -mt-2 self-start text-sm text-ink-dim">
-        Spin once a week to win free credits — $100, $50, $25, or nothing.
+        Spin once a day to win free credits — $100, $50, $25, or nothing.
       </p>
 
       <div className="relative h-[230px] w-[230px]">
@@ -163,7 +163,7 @@ export default function SpinWheel() {
           )}
         >
           <PartyPopper size={16} />
-          {result > 0 ? `You won ${formatMoney(result)}! 🎉` : "No luck this time — try again next week."}
+          {result > 0 ? `You won ${formatMoney(result)}! 🎉` : "No luck this time — try again tomorrow."}
         </div>
       )}
 
@@ -186,11 +186,11 @@ export default function SpinWheel() {
 
 function Countdown({ to }: { to: number }) {
   const ms = Math.max(0, to - Date.now());
-  const days = Math.floor(ms / (24 * 3600 * 1000));
-  const hours = Math.floor((ms % (24 * 3600 * 1000)) / (3600 * 1000));
+  const hours = Math.floor(ms / (3600 * 1000));
+  const mins = Math.floor((ms % (3600 * 1000)) / 60000);
   return (
     <span className="font-semibold text-ink">
-      {days}d {hours}h
+      {hours}h {mins}m
     </span>
   );
 }
