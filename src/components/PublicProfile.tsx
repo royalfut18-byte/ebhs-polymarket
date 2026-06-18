@@ -1,15 +1,17 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, TrendingDown, TrendingUp } from "lucide-react";
-import { fetchProfileByUsername, fetchUserPositions, fetchUserTrades } from "@/lib/queries";
+import { fetchMarkets, fetchProfileByUsername, fetchUserPositions, fetchUserTrades } from "@/lib/queries";
 import { enrichPositions, summarize } from "@/lib/pnl";
 import { formatMoney, formatShares, signedMoney, signedPct, timeAgo, toCents } from "@/lib/format";
 import Avatar from "./Avatar";
 import PositionsTable from "./PositionsTable";
 import { FadeIn } from "./motion";
 import clsx from "clsx";
+import type { Market } from "@/lib/types";
 
 export default function PublicProfile({ username }: { username: string }) {
   const profileQuery = useQuery({
@@ -29,6 +31,11 @@ export default function PublicProfile({ username }: { username: string }) {
     enabled: !!profile,
     queryFn: () => fetchUserTrades(profile!.id),
   });
+  const marketsQuery = useQuery({
+    queryKey: ["markets"],
+    queryFn: fetchMarkets,
+    refetchInterval: 5000,
+  });
 
   if (profileQuery.isLoading) {
     return <div className="py-20 text-center text-ink-faint">Loading…</div>;
@@ -44,7 +51,14 @@ export default function PublicProfile({ username }: { username: string }) {
     );
   }
 
-  const enriched = enrichPositions(positionsQuery.data ?? []);
+  const liveMarkets = useMemo(
+    () =>
+      Object.fromEntries(
+        (marketsQuery.data ?? []).map((market) => [market.id, market] as const)
+      ) as Record<string, Market>,
+    [marketsQuery.data]
+  );
+  const enriched = enrichPositions(positionsQuery.data ?? [], liveMarkets);
   const s = summarize(enriched, profile.balance);
   const up = s.totalPnl >= 0;
 

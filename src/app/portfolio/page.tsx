@@ -1,10 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
-import { fetchUserPositions, fetchUserTrades } from "@/lib/queries";
+import { fetchMarkets, fetchUserPositions, fetchUserTrades } from "@/lib/queries";
 import { enrichPositions, summarize, STARTING_BALANCE } from "@/lib/pnl";
 import { formatMoney, formatShares, signedMoney, signedPct, timeAgo, toCents } from "@/lib/format";
 import PositionsTable from "@/components/PositionsTable";
@@ -12,6 +13,7 @@ import SpinWheel from "@/components/SpinWheel";
 import CasinoHistory from "@/components/CasinoHistory";
 import { AnimatedNumber, FadeIn } from "@/components/motion";
 import clsx from "clsx";
+import type { Market } from "@/lib/types";
 
 export default function PortfolioPage() {
   const { user, profile, loading } = useAuth();
@@ -26,6 +28,11 @@ export default function PortfolioPage() {
     queryKey: ["user-trades", user?.id],
     enabled: !!user,
     queryFn: () => fetchUserTrades(user!.id),
+  });
+  const marketsQuery = useQuery({
+    queryKey: ["markets"],
+    queryFn: fetchMarkets,
+    refetchInterval: 5000,
   });
 
   if (loading) return <div className="py-20 text-center text-ink-faint">Loading…</div>;
@@ -43,7 +50,14 @@ export default function PortfolioPage() {
     );
   }
 
-  const enriched = enrichPositions(positionsQuery.data ?? []);
+  const liveMarkets = useMemo(
+    () =>
+      Object.fromEntries(
+        (marketsQuery.data ?? []).map((market) => [market.id, market] as const)
+      ) as Record<string, Market>,
+    [marketsQuery.data]
+  );
+  const enriched = enrichPositions(positionsQuery.data ?? [], liveMarkets);
   const s = summarize(enriched, profile.balance);
   const up = s.totalPnl >= 0;
 
@@ -51,17 +65,17 @@ export default function PortfolioPage() {
     <FadeIn className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold tracking-tight">Portfolio</h1>
 
-      {/* Hero: net worth + all-time P/L */}
+      {/* Hero: holdings value + all-time P/L */}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="card p-5">
           <div className="text-xs font-semibold uppercase tracking-widest text-ink-faint">
-            Portfolio value
+            Current share value
           </div>
           <div className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
-            <AnimatedNumber value={s.netWorth} format={formatMoney} />
+            <AnimatedNumber value={s.positionsValue} format={formatMoney} />
           </div>
           <div className="mt-1 text-xs text-ink-faint">
-            {formatMoney(profile.balance)} cash + {formatMoney(s.positionsValue)} in positions
+            Live mark-to-market value of your open positions.
           </div>
         </div>
 
@@ -100,7 +114,8 @@ export default function PortfolioPage() {
       </div>
 
       {/* Secondary stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Net worth" value={formatMoney(s.netWorth)} />
         <Stat label="Cash" value={formatMoney(profile.balance)} />
         <Stat label="Invested" value={formatMoney(s.basis)} />
         <Stat

@@ -22,9 +22,16 @@ export interface EnrichedPosition {
   pnlPct: number; // pnl / basis
 }
 
-export function enrichPositions(positions: PositionWithMarket[]): EnrichedPosition[] {
+export function enrichPositions(
+  positions: PositionWithMarket[],
+  liveMarkets: Record<string, Market> = {}
+): EnrichedPosition[] {
   return positions
-    .filter((p): p is PositionWithMarket & { markets: Market } => !!p.markets)
+    .map((p) => {
+      const market = liveMarkets[p.market_id] ?? p.markets;
+      return market ? { ...p, markets: market } : null;
+    })
+    .filter((p): p is PositionWithMarket & { markets: Market } => !!p?.markets)
     .map((p) => {
       const m = p.markets as Market;
       const price = displayPriceOf(p.outcome, m);
