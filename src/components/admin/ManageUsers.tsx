@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Instagram, KeyRound, Loader2, Trash2 } from "lucide-react";
+import { Check, Instagram, KeyRound, Loader2, RotateCcw, Trash2 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
 import { fetchAllProfiles, fetchProfilesPrivate } from "@/lib/queries";
 import { formatMoney } from "@/lib/format";
@@ -12,6 +12,10 @@ import { useAuth } from "@/components/AuthProvider";
 
 export default function ManageUsers() {
   const { isAdmin } = useAuth();
+  const supabase = getSupabase();
+  const queryClient = useQueryClient();
+  const [resettingWheels, setResettingWheels] = useState(false);
+  const [wheelMsg, setWheelMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["all-profiles"],
@@ -25,8 +29,31 @@ export default function ManageUsers() {
     enabled: isAdmin,
   });
 
+  async function resetAllWheels() {
+    if (!confirm("Reset the daily wheel for every user? This will let everyone spin again immediately.")) {
+      return;
+    }
+
+    setResettingWheels(true);
+    setWheelMsg(null);
+    const { data, error } = await supabase.rpc("admin_reset_all_wheels");
+    setResettingWheels(false);
+
+    if (error) {
+      setWheelMsg({ ok: false, text: error.message });
+      return;
+    }
+
+    const resetCount = Number(data ?? 0);
+    setWheelMsg({
+      ok: true,
+      text: `Reset wheel cooldowns for ${resetCount} user${resetCount === 1 ? "" : "s"}.`,
+    });
+    queryClient.invalidateQueries({ queryKey: ["all-profiles"] });
+  }
+
   if (isLoading) {
-    return <div className="card py-10 text-center text-sm text-ink-faint">Loading users…</div>;
+    return <div className="card py-10 text-center text-sm text-ink-faint">Loading users...</div>;
   }
 
   return (
@@ -35,6 +62,27 @@ export default function ManageUsers() {
         <div className="rounded-xl border border-border bg-bg-soft p-3 text-sm text-ink-dim">
           You can view players here. Adjusting balances, roles, and seeing private contact info is
           admin-only.
+        </div>
+      )}
+      {isAdmin && (
+        <div className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-ink">Daily wheel controls</h2>
+            <p className="text-sm text-ink-dim">
+              Clear every user&apos;s wheel cooldown so the daily spin is available again.
+            </p>
+          </div>
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            <button onClick={resetAllWheels} disabled={resettingWheels} className="btn btn-primary">
+              {resettingWheels ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} />}
+              Reset all wheels
+            </button>
+            {wheelMsg && (
+              <span className={wheelMsg.ok ? "text-xs text-yes-text" : "text-xs text-no-text"}>
+                {wheelMsg.text}
+              </span>
+            )}
+          </div>
         </div>
       )}
       <div className="card overflow-x-auto">
@@ -75,7 +123,7 @@ function UserRow({
   const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Password reset (admin → another user), via the service-role API route.
+  // Password reset (admin -> another user), via the service-role API route.
   const [showReset, setShowReset] = useState(false);
   const [newPw, setNewPw] = useState("");
   const [resetting, setResetting] = useState(false);
@@ -173,7 +221,7 @@ function UserRow({
       </td>
       {isAdmin && (
         <td className="px-4 py-3 text-sm">
-          <div className="text-ink">{priv?.full_name?.trim() || <span className="text-ink-faint">—</span>}</div>
+          <div className="text-ink">{priv?.full_name?.trim() || <span className="text-ink-faint">-</span>}</div>
           {priv?.instagram?.trim() ? (
             <a
               href={`https://instagram.com/${priv.instagram.replace(/^@+/, "")}`}
