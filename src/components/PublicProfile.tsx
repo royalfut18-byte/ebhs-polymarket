@@ -8,6 +8,7 @@ import { fetchMarkets, fetchProfileByUsername, fetchUserPositions, fetchUserTrad
 import { enrichPositions, summarize } from "@/lib/pnl";
 import { formatMoney, formatShares, signedMoney, signedPct, timeAgo, toCents } from "@/lib/format";
 import Avatar from "./Avatar";
+import CasinoHistory from "./CasinoHistory";
 import PositionsTable from "./PositionsTable";
 import { FadeIn } from "./motion";
 import clsx from "clsx";
@@ -150,6 +151,13 @@ export default function PublicProfile({ username }: { username: string }) {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-faint">
+          Casino history
+        </h2>
+        <CasinoHistory userId={profile.id} />
       </section>
     </FadeIn>
   );

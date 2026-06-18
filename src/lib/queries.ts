@@ -232,8 +232,8 @@ export async function fetchSupportInbox(): Promise<SupportMessage[]> {
   return (data as SupportMessage[]) ?? [];
 }
 
-// A player's own casino bet log (RLS restricts to their own rows). Newest
-// first. Pass a game to filter to one game's recent results.
+// Casino bet history for a given player. Newest first. Pass a game to filter
+// to one game's recent results.
 export async function fetchCasinoHistory(
   userId: string,
   game?: CasinoGame,
