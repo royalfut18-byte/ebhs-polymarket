@@ -9,6 +9,7 @@ import { enrichPositions, summarize, STARTING_BALANCE } from "@/lib/pnl";
 import { formatMoney, formatShares, signedMoney, signedPct, timeAgo, toCents } from "@/lib/format";
 import PositionsTable from "@/components/PositionsTable";
 import SpinWheel from "@/components/SpinWheel";
+import CasinoHistory from "@/components/CasinoHistory";
 import { AnimatedNumber, FadeIn } from "@/components/motion";
 import clsx from "clsx";
 
@@ -161,6 +162,14 @@ export default function PortfolioPage() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Casino history */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-faint">
+          Casino history
+        </h2>
+        <CasinoHistory userId={user.id} />
       </section>
     </FadeIn>
   );
