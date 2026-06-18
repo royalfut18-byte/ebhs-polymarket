@@ -12,7 +12,7 @@ import { FadeIn } from "./motion";
 export default function SettingsForm() {
   const router = useRouter();
   const supabase = getSupabase();
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
 
   const [fullName, setFullName] = useState("");
   const [instagram, setInstagram] = useState("");
@@ -25,10 +25,23 @@ export default function SettingsForm() {
   const [savingPw, setSavingPw] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+  const [username, setUsername] = useState("");
+  const [usernameLoaded, setUsernameLoaded] = useState(false);
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [usernameMsg, setUsernameMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
   // Not logged in? Bounce to login.
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
+
+  // Seed the username field from the loaded profile (once).
+  useEffect(() => {
+    if (profile && !usernameLoaded) {
+      setUsername(profile.username);
+      setUsernameLoaded(true);
+    }
+  }, [profile, usernameLoaded]);
 
   // Load the caller's own private profile (RLS returns just their row).
   useEffect(() => {
@@ -69,6 +82,43 @@ export default function SettingsForm() {
     );
   }
 
+  async function changeUsername(e: React.FormEvent) {
+    e.preventDefault();
+    const next = username.trim().toLowerCase();
+    if (!profile) return;
+    if (next === profile.username) {
+      setUsernameMsg({ ok: false, text: "That's already your username." });
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(next)) {
+      setUsernameMsg({ ok: false, text: "3–20 letters, numbers or underscores." });
+      return;
+    }
+    setSavingUsername(true);
+    setUsernameMsg(null);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      const res = await fetch("/api/account/username", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token ?? ""}` },
+        body: JSON.stringify({ username: next }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setUsernameMsg({ ok: false, text: json.error ?? "Couldn't change username." });
+      } else {
+        setUsername(next);
+        setUsernameMsg({ ok: true, text: "Username updated." });
+        await refreshProfile();
+      }
+    } catch {
+      setUsernameMsg({ ok: false, text: "Something went wrong." });
+    } finally {
+      setSavingUsername(false);
+    }
+  }
+
   async function changePassword(e: React.FormEvent) {
     e.preventDefault();
     if (newPw.length < 6) {
@@ -103,17 +153,48 @@ export default function SettingsForm() {
         <p className="text-sm text-ink-dim">Manage your profile and password.</p>
       </div>
 
-      {/* Username (read-only) */}
-      <div className="card flex items-center gap-3 p-4">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/15 text-brand">
-          <UserIcon size={18} />
-        </span>
-        <div className="min-w-0">
-          <div className="text-xs uppercase tracking-wide text-ink-faint">Username</div>
-          <div className="font-semibold text-ink">@{profile.username}</div>
+      {/* Username */}
+      <form onSubmit={changeUsername} className="card flex flex-col gap-3 p-5">
+        <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-ink-dim">
+          <UserIcon size={15} /> Username
+        </h2>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-ink-dim">
+            Your public handle — shown everywhere as @{profile.username}
+          </span>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint">
+              @
+            </span>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={!usernameLoaded}
+              autoComplete="off"
+              placeholder="username"
+              className="input pl-7 lowercase"
+            />
+          </div>
+          <span className="text-xs text-ink-faint">
+            You&apos;ll log in with the new username afterwards. Old profile links will stop working.
+          </span>
+        </label>
+        <div className="flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={savingUsername || !usernameLoaded || username.trim().toLowerCase() === profile.username}
+            className="btn btn-primary"
+          >
+            {savingUsername ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            Change username
+          </button>
+          {usernameMsg && (
+            <span className={usernameMsg.ok ? "text-sm text-yes-text" : "text-sm text-no-text"}>
+              {usernameMsg.text}
+            </span>
+          )}
         </div>
-        <span className="ml-auto text-xs text-ink-faint">can&apos;t be changed</span>
-      </div>
+      </form>
 
       {/* Profile (private name + Instagram) */}
       <form onSubmit={saveProfile} className="card flex flex-col gap-3 p-5">
