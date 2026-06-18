@@ -34,8 +34,15 @@ export default function PortfolioPage() {
     queryFn: fetchMarkets,
     refetchInterval: 5000,
   });
+  const liveMarkets = useMemo(
+    () =>
+      Object.fromEntries(
+        (marketsQuery.data ?? []).map((market) => [market.id, market] as const)
+      ) as Record<string, Market>,
+    [marketsQuery.data]
+  );
 
-  if (loading) return <div className="py-20 text-center text-ink-faint">Loading…</div>;
+  if (loading) return <div className="py-20 text-center text-ink-faint">Loading...</div>;
 
   if (!user || !profile) {
     return (
@@ -50,13 +57,6 @@ export default function PortfolioPage() {
     );
   }
 
-  const liveMarkets = useMemo(
-    () =>
-      Object.fromEntries(
-        (marketsQuery.data ?? []).map((market) => [market.id, market] as const)
-      ) as Record<string, Market>,
-    [marketsQuery.data]
-  );
   const enriched = enrichPositions(positionsQuery.data ?? [], liveMarkets);
   const s = summarize(enriched, profile.balance);
   const up = s.totalPnl >= 0;
@@ -65,7 +65,6 @@ export default function PortfolioPage() {
     <FadeIn className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold tracking-tight">Portfolio</h1>
 
-      {/* Hero: holdings value + all-time P/L */}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="card p-5">
           <div className="text-xs font-semibold uppercase tracking-widest text-ink-faint">
@@ -80,10 +79,7 @@ export default function PortfolioPage() {
         </div>
 
         <div
-          className={clsx(
-            "card relative overflow-hidden p-5",
-            up ? "border-yes/30" : "border-no/30"
-          )}
+          className={clsx("card relative overflow-hidden p-5", up ? "border-yes/30" : "border-no/30")}
         >
           <div
             className={clsx(
@@ -113,36 +109,28 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      {/* Secondary stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Net worth" value={formatMoney(s.netWorth)} />
         <Stat label="Cash" value={formatMoney(profile.balance)} />
         <Stat label="Invested" value={formatMoney(s.basis)} />
-        <Stat
-          label="Open P/L"
-          value={signedMoney(s.openPnl)}
-          tone={s.openPnl >= 0 ? "up" : "down"}
-        />
+        <Stat label="Open P/L" value={signedMoney(s.openPnl)} tone={s.openPnl >= 0 ? "up" : "down"} />
       </div>
 
-      {/* Weekly spin */}
       <div id="spin" className="scroll-mt-24">
         <SpinWheel />
       </div>
 
-      {/* Positions */}
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-faint">
           Open positions
         </h2>
         {positionsQuery.isLoading ? (
-          <div className="card py-10 text-center text-sm text-ink-faint">Loading positions…</div>
+          <div className="card py-10 text-center text-sm text-ink-faint">Loading positions...</div>
         ) : (
           <PositionsTable rows={enriched} />
         )}
       </section>
 
-      {/* Trade history */}
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-faint">
           Trade history
@@ -180,7 +168,6 @@ export default function PortfolioPage() {
         )}
       </section>
 
-      {/* Casino history */}
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-faint">
           Casino history

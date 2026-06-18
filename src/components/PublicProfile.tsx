@@ -36,9 +36,16 @@ export default function PublicProfile({ username }: { username: string }) {
     queryFn: fetchMarkets,
     refetchInterval: 5000,
   });
+  const liveMarkets = useMemo(
+    () =>
+      Object.fromEntries(
+        (marketsQuery.data ?? []).map((market) => [market.id, market] as const)
+      ) as Record<string, Market>,
+    [marketsQuery.data]
+  );
 
   if (profileQuery.isLoading) {
-    return <div className="py-20 text-center text-ink-faint">Loading…</div>;
+    return <div className="py-20 text-center text-ink-faint">Loading...</div>;
   }
   if (profileQuery.isError || !profile) {
     return (
@@ -51,13 +58,6 @@ export default function PublicProfile({ username }: { username: string }) {
     );
   }
 
-  const liveMarkets = useMemo(
-    () =>
-      Object.fromEntries(
-        (marketsQuery.data ?? []).map((market) => [market.id, market] as const)
-      ) as Record<string, Market>,
-    [marketsQuery.data]
-  );
   const enriched = enrichPositions(positionsQuery.data ?? [], liveMarkets);
   const s = summarize(enriched, profile.balance);
   const up = s.totalPnl >= 0;
@@ -96,15 +96,10 @@ export default function PublicProfile({ username }: { username: string }) {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         <Stat label="Net worth" value={formatMoney(s.netWorth)} />
         <Stat label="Positions" value={formatMoney(s.positionsValue)} />
-        <Stat
-          label="All-time P/L"
-          value={signedMoney(s.totalPnl)}
-          tone={up ? "up" : "down"}
-        />
+        <Stat label="All-time P/L" value={signedMoney(s.totalPnl)} tone={up ? "up" : "down"} />
       </div>
 
       <section className="flex flex-col gap-3">
@@ -112,7 +107,7 @@ export default function PublicProfile({ username }: { username: string }) {
           Open positions
         </h2>
         {positionsQuery.isLoading ? (
-          <div className="card py-10 text-center text-sm text-ink-faint">Loading…</div>
+          <div className="card py-10 text-center text-sm text-ink-faint">Loading...</div>
         ) : (
           <PositionsTable rows={enriched} />
         )}
@@ -123,7 +118,7 @@ export default function PublicProfile({ username }: { username: string }) {
           Trade history
         </h2>
         {tradesQuery.isLoading ? (
-          <div className="card py-10 text-center text-sm text-ink-faint">Loading…</div>
+          <div className="card py-10 text-center text-sm text-ink-faint">Loading...</div>
         ) : (tradesQuery.data ?? []).length === 0 ? (
           <div className="card py-10 text-center text-sm text-ink-dim">No trades yet.</div>
         ) : (
@@ -133,9 +128,7 @@ export default function PublicProfile({ username }: { username: string }) {
                 <span
                   className={clsx(
                     "rounded-md px-1.5 py-0.5 text-xs font-semibold capitalize",
-                    t.side === "buy"
-                      ? "bg-brand/15 text-brand-light"
-                      : "bg-yellow-500/15 text-yellow-300"
+                    t.side === "buy" ? "bg-brand/15 text-brand-light" : "bg-yellow-500/15 text-yellow-300"
                   )}
                 >
                   {t.side}

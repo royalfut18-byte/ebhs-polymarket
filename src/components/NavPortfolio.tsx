@@ -11,7 +11,6 @@ import { formatMoney, signedMoney, signedPct } from "@/lib/format";
 import clsx from "clsx";
 import type { Market } from "@/lib/types";
 
-/** Compact live holdings value + all-time P/L shown in the nav bar. */
 export default function NavPortfolio() {
   const { user, profile } = useAuth();
   const { data: positions } = useQuery({
@@ -25,9 +24,6 @@ export default function NavPortfolio() {
     queryFn: fetchMarkets,
     refetchInterval: 5000,
   });
-
-  if (!profile) return null;
-
   const liveMarkets = useMemo(
     () =>
       Object.fromEntries(
@@ -35,12 +31,14 @@ export default function NavPortfolio() {
       ) as Record<string, Market>,
     [marketsQuery.data]
   );
+
+  if (!profile) return null;
+
   const s = summarize(enrichPositions(positions ?? [], liveMarkets), profile.balance);
   const up = s.totalPnl >= 0;
 
   return (
     <>
-      {/* Full widget on large screens */}
       <Link
         href="/portfolio"
         className="hidden items-stretch overflow-hidden rounded-xl border border-border bg-bg-soft text-sm transition-colors hover:border-border-soft lg:flex"
@@ -73,7 +71,6 @@ export default function NavPortfolio() {
         </div>
       </Link>
 
-      {/* Compact P/L pill on small/medium screens */}
       <Link
         href="/portfolio"
         className={clsx(
