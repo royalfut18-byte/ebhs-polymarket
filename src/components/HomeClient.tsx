@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Flame, Inbox, Lightbulb, Sparkles, TrendingUp } from "lucide-react";
-import { fetchMarkets, fetchMarketStats } from "@/lib/queries";
+import { fetchMarkets, fetchMarketStats, fetchRetiredStats } from "@/lib/queries";
 import type { Market, MarketStat, MarketStatus } from "@/lib/types";
 import { formatCompact, toCents, toPercent } from "@/lib/format";
 import { displayPriceYes } from "@/lib/lmsr";
@@ -39,10 +39,12 @@ export default function HomeClient() {
 
   const marketsQuery = useQuery({ queryKey: ["markets"], queryFn: fetchMarkets });
   const statsQuery = useQuery({ queryKey: ["market-stats"], queryFn: fetchMarketStats });
+  const retiredQuery = useQuery({ queryKey: ["retired-stats"], queryFn: fetchRetiredStats });
   const categories = useCategories();
 
   const allMarkets: Market[] = marketsQuery.data ?? [];
   const statsMap = statsQuery.data ?? {};
+  const retired = retiredQuery.data ?? { volume: 0, trades: 0 };
 
   // The "hottest" market = highest-volume open standalone market.
   const trending = useMemo(() => {
@@ -67,8 +69,13 @@ export default function HomeClient() {
       if (m.group_id) groups.add(m.group_id);
       else singles++;
     }
-    return { markets: singles + groups.size, volume, trades };
-  }, [allMarkets, statsMap]);
+    // Fold in activity banked from deleted markets so totals never drop.
+    return {
+      markets: singles + groups.size,
+      volume: volume + retired.volume,
+      trades: trades + retired.trades,
+    };
+  }, [allMarkets, statsMap, retired]);
 
   const categoryList = useMemo(() => {
     const names = categories.map((c) => c.name);

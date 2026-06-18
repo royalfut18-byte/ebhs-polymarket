@@ -173,6 +173,20 @@ export async function fetchProfilesPrivate(): Promise<Record<string, ProfilePriv
   return map;
 }
 
+// Volume + trade count banked from markets that have since been deleted, so the
+// homepage headline totals don't go backwards when an admin removes a market.
+export async function fetchRetiredStats(): Promise<{ volume: number; trades: number }> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("app_settings")
+    .select("value")
+    .eq("key", "retired_stats")
+    .maybeSingle();
+  if (error) throw error;
+  const v = (data?.value ?? {}) as { volume?: number; trades?: number };
+  return { volume: Number(v.volume) || 0, trades: Number(v.trades) || 0 };
+}
+
 export async function fetchPrizes(): Promise<Prizes | null> {
   const supabase = getSupabase();
   const { data, error } = await supabase

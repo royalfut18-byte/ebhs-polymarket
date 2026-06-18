@@ -28,7 +28,7 @@ export default function ManageMarkets() {
   const [editId, setEditId] = useState<string | null>(null);
 
   function invalidate() {
-    ["markets", "market-stats", "leaderboard"].forEach((k) =>
+    ["markets", "market-stats", "leaderboard", "retired-stats"].forEach((k) =>
       queryClient.invalidateQueries({ queryKey: [k] })
     );
   }
