@@ -114,12 +114,11 @@ export default function Mines() {
             </select>
           </div>
 
-          {active && (
-            <div className="grid grid-cols-2 gap-3">
-              <Stat label="Current" value={`${mult.toFixed(2)}×`} />
-              <Stat label="Next tile" value={`${nextMult.toFixed(2)}×`} />
-            </div>
-          )}
+          {/* Always rendered — invisible when inactive to prevent layout shift */}
+          <div className={clsx("grid grid-cols-2 gap-3", !active && "invisible")}>
+            <Stat label="Current" value={`${mult.toFixed(2)}×`} />
+            <Stat label="Next tile" value={`${nextMult.toFixed(2)}×`} />
+          </div>
 
           {active ? (
             <button
@@ -136,16 +135,21 @@ export default function Mines() {
             </button>
           )}
 
-          {ended && (
-            <div
-              className={clsx(
-                "rounded-xl px-3 py-2 text-center text-sm font-semibold",
-                ended.win ? "bg-yes/15 text-yes-text" : "bg-no/15 text-no-text"
-              )}
-            >
-              {ended.win ? `Cashed out ${formatMoney(ended.payout)} 🎉` : "💥 Boom! You hit a mine"}
-            </div>
-          )}
+          {/* Reserved height — invisible when no result to avoid controls panel resizing */}
+          <div
+            className={clsx(
+              "rounded-xl px-3 py-2 text-center text-sm font-semibold",
+              !ended && "invisible",
+              ended?.win && "bg-yes/15 text-yes-text",
+              ended && !ended.win && "bg-no/15 text-no-text"
+            )}
+          >
+            {ended?.win
+              ? `Cashed out ${formatMoney(ended.payout)} 🎉`
+              : ended
+              ? "💥 Boom! You hit a mine"
+              : " "}
+          </div>
           {error && <p className="text-center text-sm text-no-text">{error}</p>}
         </>
       }

@@ -73,29 +73,31 @@ export default function Blackjack() {
         <>
           <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={active || busy} />
 
-          {active ? (
-            <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => action("hit")} disabled={busy} className="btn btn-ghost py-3">
-                  Hit
-                </button>
-                <button onClick={() => action("stand")} disabled={busy} className="btn btn-ghost py-3">
-                  Stand
-                </button>
-              </div>
-              <button
-                onClick={() => action("double")}
-                disabled={busy || !state?.can_double || (profile?.balance ?? 0) < amount}
-                className="btn btn-primary py-3"
-              >
-                Double
+          {/* Action buttons — always rendered, invisible when not active to prevent layout shift */}
+          <div className={clsx("flex flex-col gap-2", !active && "invisible")}>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => action("hit")} disabled={busy || !active} className="btn btn-ghost py-3">
+                Hit
+              </button>
+              <button onClick={() => action("stand")} disabled={busy || !active} className="btn btn-ghost py-3">
+                Stand
               </button>
             </div>
-          ) : (
-            <button onClick={deal} disabled={busy || !profile} className="btn btn-primary py-3 text-base">
-              {busy ? "Dealing…" : `Deal ${formatMoney(amount)}`}
+            <button
+              onClick={() => action("double")}
+              disabled={busy || !active || !state?.can_double || (profile?.balance ?? 0) < amount}
+              className="btn btn-primary py-3"
+            >
+              Double
             </button>
-          )}
+          </div>
+          <button
+            onClick={deal}
+            disabled={busy || !profile || active}
+            className={clsx("btn btn-primary py-3 text-base", active && "invisible")}
+          >
+            {busy && !active ? "Dealing…" : `Deal ${formatMoney(amount)}`}
+          </button>
 
           {state?.done && (
             <div

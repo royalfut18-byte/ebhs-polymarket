@@ -84,18 +84,21 @@ export default function Keno() {
           <button onClick={go} disabled={busy || !profile || picks.length < 1} className="btn btn-primary py-3 text-base">
             {busy ? "Drawing…" : `Bet ${formatMoney(amount)}`}
           </button>
-          {result && (
-            <div
-              className={clsx(
-                "rounded-xl px-3 py-2 text-center text-sm font-semibold",
-                result.payout > 0 ? "bg-yes/15 text-yes-text" : "bg-no/15 text-no-text"
-              )}
-            >
-              {result.payout > 0
+          {/* Reserved height — invisible when no result */}
+          <div
+            className={clsx(
+              "rounded-xl px-3 py-2 text-center text-sm font-semibold",
+              !result && "invisible",
+              result && result.payout > 0 && "bg-yes/15 text-yes-text",
+              result && result.payout === 0 && "bg-no/15 text-no-text"
+            )}
+          >
+            {result
+              ? result.payout > 0
                 ? `${result.hits} hits · ${result.multiplier.toFixed(2)}× · ${formatMoney(result.payout)}`
-                : `${result.hits} hits — no win`}
-            </div>
-          )}
+                : `${result.hits} hits — no win`
+              : " "}
+          </div>
           {error && <p className="text-center text-sm text-no-text">{error}</p>}
         </>
       }

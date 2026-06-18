@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/components/AuthProvider";
 import { getSupabase } from "@/lib/supabase/client";
@@ -9,6 +9,7 @@ import { getSupabase } from "@/lib/supabase/client";
 function friendlyError(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e ?? "Something went wrong.");
   const m = msg.toLowerCase();
+  if (m === "busy") return ""; // silently swallowed — concurrent click guard
   if (
     m.includes("schema cache") ||
     m.includes("could not find the function") ||
@@ -27,10 +28,15 @@ function friendlyError(e: unknown): string {
 // Calls a casino RPC, then refreshes the player's balance + history. Every
 // outcome and payout is decided server-side, so the client just relays the
 // result. Returns a typed `play` fn plus a `busy` flag for disabling controls.
+//
+// busyRef is a synchronous guard — unlike useState, a ref update is visible
+// immediately within the same JS tick, so rapid double-clicks can't slip two
+// concurrent calls through before React re-renders with busy=true.
 export function useCasino() {
   const { refreshProfile, user } = useAuth();
   const qc = useQueryClient();
   const supabase = getSupabase();
+  const busyRef = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +45,10 @@ export function useCasino() {
       fn: string,
       args: Record<string, unknown>
     ): Promise<T> => {
+      // Synchronous guard: reject concurrent calls immediately without waiting
+      // for React to re-render with busy=true (which happens too late).
+      if (busyRef.current) throw new Error("busy");
+      busyRef.current = true;
       setError(null);
       setBusy(true);
       try {
@@ -50,9 +60,11 @@ export function useCasino() {
         qc.invalidateQueries({ queryKey: ["leaderboard"] });
         return data as T;
       } catch (e) {
-        setError(friendlyError(e));
+        const msg = friendlyError(e);
+        if (msg) setError(msg);
         throw e;
       } finally {
+        busyRef.current = false;
         setBusy(false);
       }
     },

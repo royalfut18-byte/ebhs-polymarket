@@ -131,18 +131,21 @@ export default function Crash() {
             </button>
           )}
 
-          {ended && (
-            <div
-              className={clsx(
-                "rounded-xl px-3 py-2 text-center text-sm font-semibold",
-                ended.win ? "bg-yes/15 text-yes-text" : "bg-no/15 text-no-text"
-              )}
-            >
-              {ended.win
-                ? `Cashed @ ${ended.multiplier.toFixed(2)}× · +${formatMoney(ended.payout)} 🎉`
-                : `Busted @ ${ended.crash.toFixed(2)}×`}
-            </div>
-          )}
+          {/* Reserved height — invisible when no result */}
+          <div
+            className={clsx(
+              "rounded-xl px-3 py-2 text-center text-sm font-semibold",
+              !ended && "invisible",
+              ended?.win && "bg-yes/15 text-yes-text",
+              ended && !ended.win && "bg-no/15 text-no-text"
+            )}
+          >
+            {ended?.win
+              ? `Cashed @ ${ended.multiplier.toFixed(2)}× · +${formatMoney(ended.payout)} 🎉`
+              : ended
+              ? `Busted @ ${ended.crash.toFixed(2)}×`
+              : " "}
+          </div>
           {error && <p className="text-center text-sm text-no-text">{error}</p>}
         </>
       }
