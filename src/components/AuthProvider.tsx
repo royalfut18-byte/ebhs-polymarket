@@ -11,13 +11,15 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase/client";
-import type { Profile, Role } from "@/lib/types";
+import type { ApprovalStatus, Profile, Role } from "@/lib/types";
 
 interface AuthContextValue {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
   role: Role | null;
+  approvalStatus: ApprovalStatus | null;
+  isApproved: boolean;
   isAdmin: boolean;
   isStaff: boolean; // admin OR subadmin (can manage markets)
   loading: boolean;
@@ -86,6 +88,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       profile,
       role: profile?.role ?? null,
+      approvalStatus: profile?.approval_status ?? null,
+      // No profile yet (still loading) counts as approved so we don't flash the
+      // gate; the gate only triggers on a profile that is explicitly not approved.
+      isApproved: !profile || profile.approval_status === "approved",
       isAdmin: profile?.role === "admin",
       isStaff: profile?.role === "admin" || profile?.role === "subadmin",
       loading,

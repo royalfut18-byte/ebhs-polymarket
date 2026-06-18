@@ -5,6 +5,7 @@ export type Role = "admin" | "subadmin" | "user";
 export type MarketStatus = "open" | "closed" | "resolved" | "cancelled";
 export type Outcome = "yes" | "no";
 export type TradeSide = "buy" | "sell";
+export type ApprovalStatus = "pending" | "approved" | "declined";
 
 export interface Profile {
   id: string;
@@ -12,6 +13,7 @@ export interface Profile {
   display_name: string;
   role: Role;
   balance: number;
+  approval_status: ApprovalStatus;
   created_at: string;
   last_spin_at: string | null;
 }

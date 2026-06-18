@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   Gift,
   LayoutGrid,
@@ -11,15 +12,18 @@ import {
   MessageSquare,
   ShieldCheck,
   Tags,
+  UserCheck,
   Users,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import { fetchAllProfiles } from "@/lib/queries";
 import CreateMarketForm from "@/components/admin/CreateMarketForm";
 import ManageMarkets from "@/components/admin/ManageMarkets";
 import ManageUsers from "@/components/admin/ManageUsers";
 import ManageSubadmins from "@/components/admin/ManageSubadmins";
 import ManageSuggestions from "@/components/admin/ManageSuggestions";
 import ManageCategories from "@/components/admin/ManageCategories";
+import AccountApprovals from "@/components/admin/AccountApprovals";
 import PrizesEditor from "@/components/admin/PrizesEditor";
 import AdminChat from "@/components/admin/AdminChat";
 import AdminSupport from "@/components/admin/AdminSupport";
@@ -30,6 +34,7 @@ type Tab =
   | "markets"
   | "suggestions"
   | "support"
+  | "approvals"
   | "users"
   | "categories"
   | "subadmins"
@@ -40,6 +45,14 @@ export default function AdminPage() {
   const { isStaff, isAdmin, loading } = useAuth();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("create");
+
+  // Pending sign-up count (admin-only) for the approvals tab badge.
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["all-profiles"],
+    queryFn: fetchAllProfiles,
+    enabled: isAdmin,
+  });
+  const pendingCount = profiles.filter((p) => p.approval_status === "pending").length;
 
   // Server-side RLS + RPC checks are the real gate; this is just UX.
   useEffect(() => {
@@ -58,11 +71,24 @@ export default function AdminPage() {
     );
   }
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
+  const tabs: {
+    id: Tab;
+    label: string;
+    icon: React.ReactNode;
+    adminOnly?: boolean;
+    badge?: number;
+  }[] = [
     { id: "create", label: "Create Market", icon: <LayoutGrid size={16} /> },
     { id: "markets", label: "Markets", icon: <ListChecks size={16} /> },
     { id: "suggestions", label: "Suggestions", icon: <Lightbulb size={16} /> },
     { id: "support", label: "Support", icon: <LifeBuoy size={16} /> },
+    {
+      id: "approvals",
+      label: "Account approvals",
+      icon: <UserCheck size={16} />,
+      adminOnly: true,
+      badge: pendingCount,
+    },
     { id: "users", label: "Users", icon: <Users size={16} /> },
     { id: "categories", label: "Categories", icon: <Tags size={16} /> },
     { id: "subadmins", label: "Sub-admins", icon: <ShieldCheck size={16} />, adminOnly: true },
@@ -98,6 +124,11 @@ export default function AdminPage() {
           >
             {t.icon}
             {t.label}
+            {!!t.badge && t.badge > 0 && (
+              <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-yellow-400 px-1.5 text-[11px] font-bold text-black">
+                {t.badge}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -107,6 +138,7 @@ export default function AdminPage() {
         {activeTab === "markets" && <ManageMarkets />}
         {activeTab === "suggestions" && <ManageSuggestions />}
         {activeTab === "support" && <AdminSupport />}
+        {activeTab === "approvals" && isAdmin && <AccountApprovals />}
         {activeTab === "users" && <ManageUsers />}
         {activeTab === "categories" && <ManageCategories />}
         {activeTab === "subadmins" && isAdmin && <ManageSubadmins />}
