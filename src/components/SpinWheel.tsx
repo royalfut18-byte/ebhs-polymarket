@@ -16,14 +16,12 @@ interface Segment {
 }
 
 const SEGMENTS: Segment[] = [
-  { label: "$100", value: 100, color: "#fbbf24" },
-  { label: "—", value: 0, color: "#1b1b28" },
-  { label: "$50", value: 50, color: "#a855f7" },
-  { label: "—", value: 0, color: "#23232e" },
-  { label: "$25", value: 25, color: "#5b7cfa" },
-  { label: "—", value: 0, color: "#1b1b28" },
-  { label: "$25", value: 25, color: "#22d3ee" },
-  { label: "—", value: 0, color: "#23232e" },
+  { label: "$1000", value: 1000, color: "#fbbf24" },
+  { label: "$50", value: 50, color: "#5b7cfa" },
+  { label: "$500", value: 500, color: "#a855f7" },
+  { label: "$50", value: 50, color: "#22d3ee" },
+  { label: "$500", value: 500, color: "#a855f7" },
+  { label: "$50", value: 50, color: "#5b7cfa" },
 ];
 const N = SEGMENTS.length;
 const SLICE = 360 / N;
@@ -108,7 +106,7 @@ export default function SpinWheel() {
         <h2 className="text-lg font-bold">Daily spin</h2>
       </div>
       <p className="relative -mt-2 self-start text-sm text-ink-dim">
-        Spin once a day to win free credits — $100, $50, $25, or nothing.
+        Spin once a day to win free credits — $1,000, $500, or $50. Every spin wins!
       </p>
 
       <div className="relative h-[230px] w-[230px]">
