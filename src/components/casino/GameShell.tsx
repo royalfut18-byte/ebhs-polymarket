@@ -44,11 +44,14 @@ export default function GameShell({
         <h1 className="text-2xl font-bold tracking-tight">{meta.name}</h1>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,340px)_1fr]">
-        <div className="order-2 lg:order-1">
+      {/* Both tracks use minmax(…,…) with a 0/280px floor so the canvas's
+          min-content can never squeeze the controls column to nothing (which
+          previously disorganised the buttons on narrower / zoomed screens). */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
+        <div className="order-2 min-w-0 lg:order-1">
           <div className="card flex flex-col gap-4 p-4">{controls}</div>
         </div>
-        <div className="order-1 flex flex-col gap-3 lg:order-2">
+        <div className="order-1 flex min-w-0 flex-col gap-3 lg:order-2">
           <div className="card relative min-h-[360px] overflow-hidden p-5">
             <div
               className="pointer-events-none absolute inset-0 opacity-60"

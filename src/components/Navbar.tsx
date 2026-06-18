@@ -10,6 +10,7 @@ import {
   Lightbulb,
   LogOut,
   Search,
+  Settings,
   Shield,
   Trophy,
   User as UserIcon,
@@ -139,6 +140,9 @@ export default function Navbar() {
                       </MenuItem>
                       <MenuItem href="/suggest" icon={<Lightbulb size={16} />} onClick={() => setMenuOpen(false)}>
                         Suggest a market
+                      </MenuItem>
+                      <MenuItem href="/settings" icon={<Settings size={16} />} onClick={() => setMenuOpen(false)}>
+                        Settings
                       </MenuItem>
                       {isStaff && (
                         <MenuItem href="/admin" icon={<LayoutDashboard size={16} />} onClick={() => setMenuOpen(false)}>

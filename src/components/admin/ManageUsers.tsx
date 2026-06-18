@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Instagram, Loader2, Trash2 } from "lucide-react";
+import { Check, Instagram, KeyRound, Loader2, Trash2 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
 import { fetchAllProfiles, fetchProfilesPrivate } from "@/lib/queries";
 import { formatMoney } from "@/lib/format";
@@ -75,7 +75,49 @@ function UserRow({
   const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // Password reset (admin → another user), via the service-role API route.
+  const [showReset, setShowReset] = useState(false);
+  const [newPw, setNewPw] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
   const dirty = Number(value) !== Number(user.balance);
+
+  async function resetPassword() {
+    if (newPw.length < 6) {
+      setPwMsg({ ok: false, text: "Min 6 characters." });
+      return;
+    }
+    setResetting(true);
+    setPwMsg(null);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      const res = await fetch("/api/admin/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token ?? ""}`,
+        },
+        body: JSON.stringify({ userId: user.id, password: newPw }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setPwMsg({ ok: false, text: json.error ?? "Failed to reset." });
+      } else {
+        setPwMsg({ ok: true, text: "Password updated." });
+        setNewPw("");
+        setTimeout(() => {
+          setShowReset(false);
+          setPwMsg(null);
+        }, 1500);
+      }
+    } catch {
+      setPwMsg({ ok: false, text: "Something went wrong." });
+    } finally {
+      setResetting(false);
+    }
+  }
 
   async function deleteUser() {
     if (
@@ -148,37 +190,73 @@ function UserRow({
       )}
       <td className="px-4 py-3">
         {isAdmin ? (
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              className="input w-32"
-            />
-            <button
-              onClick={save}
-              disabled={saving || !dirty}
-              className="btn btn-ghost px-2.5 py-1.5 text-xs"
-            >
-              {saving ? (
-                <Loader2 size={13} className="animate-spin" />
-              ) : saved ? (
-                <Check size={13} className="text-yes-text" />
-              ) : (
-                "Set"
-              )}
-            </button>
-            {user.role !== "admin" && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                className="input w-32"
+              />
               <button
-                onClick={deleteUser}
-                disabled={deleting}
-                className="btn shrink-0 border border-no/40 bg-no/10 px-2.5 py-1.5 text-xs text-no-text hover:bg-no/25"
-                aria-label="Delete user"
+                onClick={save}
+                disabled={saving || !dirty}
+                className="btn btn-ghost px-2.5 py-1.5 text-xs"
               >
-                {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                {saving ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : saved ? (
+                  <Check size={13} className="text-yes-text" />
+                ) : (
+                  "Set"
+                )}
               </button>
+              <button
+                onClick={() => {
+                  setShowReset((s) => !s);
+                  setPwMsg(null);
+                }}
+                className="btn btn-ghost shrink-0 px-2.5 py-1.5 text-xs"
+                title="Reset password"
+              >
+                <KeyRound size={13} />
+              </button>
+              {user.role !== "admin" && (
+                <button
+                  onClick={deleteUser}
+                  disabled={deleting}
+                  className="btn shrink-0 border border-no/40 bg-no/10 px-2.5 py-1.5 text-xs text-no-text hover:bg-no/25"
+                  aria-label="Delete user"
+                >
+                  {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                </button>
+              )}
+              {err && <span className="text-xs text-no-text">{err}</span>}
+            </div>
+            {showReset && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  placeholder="New password"
+                  autoComplete="off"
+                  className="input w-40"
+                />
+                <button
+                  onClick={resetPassword}
+                  disabled={resetting}
+                  className="btn btn-primary px-3 py-1.5 text-xs"
+                >
+                  {resetting ? <Loader2 size={13} className="animate-spin" /> : "Set password"}
+                </button>
+                {pwMsg && (
+                  <span className={pwMsg.ok ? "text-xs text-yes-text" : "text-xs text-no-text"}>
+                    {pwMsg.text}
+                  </span>
+                )}
+              </div>
             )}
-            {err && <span className="text-xs text-no-text">{err}</span>}
           </div>
         ) : (
           <span className="text-ink">{formatMoney(user.balance)}</span>
