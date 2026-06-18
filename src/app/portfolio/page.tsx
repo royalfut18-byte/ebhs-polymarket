@@ -20,6 +20,7 @@ export default function PortfolioPage() {
     queryKey: ["portfolio-positions", user?.id],
     enabled: !!user,
     queryFn: () => fetchUserPositions(user!.id),
+    refetchInterval: 5000,
   });
   const tradesQuery = useQuery({
     queryKey: ["user-trades", user?.id],

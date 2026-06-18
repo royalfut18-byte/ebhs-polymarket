@@ -16,6 +16,7 @@ export default function NavPortfolio() {
     queryKey: ["portfolio-positions", user?.id],
     enabled: !!user,
     queryFn: () => fetchUserPositions(user!.id),
+    refetchInterval: 5000,
   });
 
   if (!profile) return null;

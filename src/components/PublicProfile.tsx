@@ -22,6 +22,7 @@ export default function PublicProfile({ username }: { username: string }) {
     queryKey: ["public-positions", profile?.id],
     enabled: !!profile,
     queryFn: () => fetchUserPositions(profile!.id),
+    refetchInterval: 5000,
   });
   const tradesQuery = useQuery({
     queryKey: ["public-trades", profile?.id],
