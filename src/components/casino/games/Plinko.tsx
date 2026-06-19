@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
@@ -51,6 +51,13 @@ export default function Plinko() {
   const multipliers = useMemo(() => plinkoMultipliers(risk, rows), [risk, rows]);
   const g = (W - 2 * PAD) / rows;
   const boardH = TOP + rows * ROW_GAP + 6 + BUCKET_H + 8;
+
+  // Changing the rows/risk reshapes the whole board, so drop any resting ball
+  // and bucket highlight from the previous round (their geometry no longer fits).
+  useEffect(() => {
+    setDrop(null);
+    setLanded(null);
+  }, [rows, risk]);
 
   // Pegs: a triangle of dots, rows r = 1..rows with r+1 pegs each.
   const pegs = useMemo(() => {
@@ -183,16 +190,16 @@ export default function Plinko() {
             const color = bucketColor(k, rows);
             return (
               <g key={k}>
-                <motion.rect
+                <rect
                   x={cx - bucketW / 2}
                   y={bucketY}
                   width={bucketW}
                   height={BUCKET_H}
                   rx={4}
                   fill={color}
-                  animate={isHit ? { y: [bucketY, bucketY + 4, bucketY], opacity: [1, 1, 1] } : { y: bucketY }}
-                  transition={{ duration: 0.3 }}
-                  style={{ filter: isHit ? "brightness(1.4)" : "none" }}
+                  stroke={isHit ? "#ffffff" : "transparent"}
+                  strokeWidth={isHit ? 2 : 0}
+                  style={{ filter: isHit ? "brightness(1.45)" : "none", transition: "filter 0.2s" }}
                 />
                 <text
                   x={cx}
