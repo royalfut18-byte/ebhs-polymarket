@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Instagram, KeyRound, Loader2, RotateCcw, Trash2 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
@@ -117,6 +117,7 @@ function UserRow({
 }) {
   const supabase = getSupabase();
   const queryClient = useQueryClient();
+  const { user: currentUser, refreshProfile } = useAuth();
   const [value, setValue] = useState(String(user.balance));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -130,6 +131,10 @@ function UserRow({
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const dirty = Number(value) !== Number(user.balance);
+
+  useEffect(() => {
+    setValue(String(user.balance));
+  }, [user.balance]);
 
   async function resetPassword() {
     if (newPw.length < 6) {
@@ -191,16 +196,22 @@ function UserRow({
     setSaving(true);
     setErr(null);
     setSaved(false);
-    const { error } = await supabase.rpc("admin_set_balance", {
+    const nextBalance = Math.max(0, Number(value) || 0);
+    const { data, error } = await supabase.rpc("admin_set_balance", {
       p_user_id: user.id,
-      p_balance: Number(value) || 0,
+      p_balance: nextBalance,
     });
     setSaving(false);
     if (error) {
       setErr(error.message);
     } else {
+      const updatedUser = data as Profile | null;
+      setValue(String(updatedUser?.balance ?? nextBalance));
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
+      if (currentUser?.id === user.id) {
+        await refreshProfile();
+      }
       queryClient.invalidateQueries({ queryKey: ["all-profiles"] });
       queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
     }
@@ -244,6 +255,8 @@ function UserRow({
                 type="number"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
+                min="0"
+                step="0.01"
                 className="input w-32"
               />
               <button
