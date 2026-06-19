@@ -85,22 +85,24 @@ export default function ManageUsers() {
           </div>
         </div>
       )}
-      <div className="card overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-faint">
-              <th className="px-4 py-3 font-medium">User</th>
-              <th className="px-4 py-3 font-medium">Role</th>
-              {isAdmin && <th className="px-4 py-3 font-medium">Name / Instagram</th>}
-              <th className="px-4 py-3 font-medium">Balance</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <UserRow key={u.id} user={u} isAdmin={isAdmin} priv={privateMap[u.id]} />
-            ))}
-          </tbody>
-        </table>
+      <div className="overflow-hidden rounded-2xl border border-border bg-bg-card shadow-card">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] table-fixed text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-faint">
+                <th className="w-[26%] px-4 py-3 font-medium">User</th>
+                <th className="w-[14%] px-4 py-3 font-medium">Role</th>
+                {isAdmin && <th className="w-[28%] px-4 py-3 font-medium">Name / Instagram</th>}
+                <th className="px-4 py-3 font-medium">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <UserRow key={u.id} user={u} isAdmin={isAdmin} priv={privateMap[u.id]} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -233,39 +235,44 @@ function UserRow({
   }
 
   return (
-    <tr className="border-b border-border/60 last:border-0">
-      <td className="px-4 py-3">
+    <tr className="border-b border-border/60 align-top last:border-0">
+      <td className="px-4 py-3 align-top">
         <div className="flex items-center gap-2.5">
           <Avatar name={user.username} size={30} />
-          <div className="min-w-0 font-medium text-ink">@{user.username}</div>
+          <div className="min-w-0 truncate font-medium text-ink">@{user.username}</div>
         </div>
       </td>
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 align-top">
         <span className="rounded-full bg-bg-hover px-2 py-0.5 text-xs font-medium capitalize text-ink-dim">
           {user.role}
         </span>
       </td>
       {isAdmin && (
-        <td className="px-4 py-3 text-sm">
-          <div className="text-ink">{priv?.full_name?.trim() || <span className="text-ink-faint">-</span>}</div>
-          {priv?.instagram?.trim() ? (
-            <a
-              href={`https://instagram.com/${priv.instagram.replace(/^@+/, "")}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-brand hover:underline"
-            >
-              <Instagram size={12} /> @{priv.instagram.replace(/^@+/, "")}
-            </a>
-          ) : (
-            <span className="text-xs text-ink-faint">no Instagram</span>
-          )}
+        <td className="px-4 py-3 align-top text-sm">
+          <div className="min-w-0 max-w-full">
+            <div className="truncate text-ink">
+              {priv?.full_name?.trim() || <span className="text-ink-faint">-</span>}
+            </div>
+            {priv?.instagram?.trim() ? (
+              <a
+                href={`https://instagram.com/${priv.instagram.replace(/^@+/, "")}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex max-w-full items-center gap-1 overflow-hidden text-xs text-brand hover:underline"
+              >
+                <Instagram size={12} className="shrink-0" />
+                <span className="truncate">@{priv.instagram.replace(/^@+/, "")}</span>
+              </a>
+            ) : (
+              <span className="text-xs text-ink-faint">no Instagram</span>
+            )}
+          </div>
         </td>
       )}
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 align-top">
         {isAdmin ? (
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 type="number"
                 value={value}
@@ -307,10 +314,10 @@ function UserRow({
                   {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                 </button>
               )}
-              {err && <span className="text-xs text-no-text">{err}</span>}
             </div>
+            {err && <span className="text-xs text-no-text">{err}</span>}
             {showReset && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="text"
                   value={newPw}
