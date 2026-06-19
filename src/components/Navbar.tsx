@@ -12,6 +12,7 @@ import {
   Search,
   Settings,
   Shield,
+  Swords,
   Trophy,
   User as UserIcon,
   Wallet,
@@ -79,6 +80,12 @@ export default function Navbar() {
             <Dice5 size={16} /> Casino
           </Link>
           <Link
+            href="/arena"
+            className="hidden items-center gap-1.5 text-sm font-medium text-ink-dim hover:text-ink md:flex"
+          >
+            <Swords size={16} /> Arena
+          </Link>
+          <Link
             href="/leaderboard"
             className="hidden items-center gap-1.5 text-sm font-medium text-ink-dim hover:text-ink md:flex"
           >
@@ -134,6 +141,9 @@ export default function Navbar() {
                       </MenuItem>
                       <MenuItem href="/casino" icon={<Dice5 size={16} />} onClick={() => setMenuOpen(false)}>
                         Casino
+                      </MenuItem>
+                      <MenuItem href="/arena" icon={<Swords size={16} />} onClick={() => setMenuOpen(false)}>
+                        Arena
                       </MenuItem>
                       <MenuItem href="/leaderboard" icon={<Trophy size={16} />} onClick={() => setMenuOpen(false)}>
                         Leaderboard

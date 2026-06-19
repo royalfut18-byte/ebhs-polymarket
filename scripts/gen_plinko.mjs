@@ -1,7 +1,7 @@
 // One-off generator for Plinko paytables (rows 8..16 × low/medium/high).
 // Produces symmetric U-shaped multiplier tables with a verified house edge,
 // capped at 1000×. The printed output is pasted verbatim into BOTH
-// supabase/migrations/0014_plinko.sql and src/lib/casino/plinko.ts so the
+// supabase/migrations/0016_plinko.sql and src/lib/casino/plinko.ts so the
 // server payout and the client display can never drift apart.
 
 function binomial(n) {
