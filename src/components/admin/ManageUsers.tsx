@@ -132,6 +132,12 @@ function UserRow({
 
   const dirty = Number(value) !== Number(user.balance);
 
+  function applyUserUpdate(updatedUser: Profile) {
+    queryClient.setQueryData<Profile[]>(["all-profiles"], (current = []) =>
+      current.map((profile) => (profile.id === updatedUser.id ? updatedUser : profile))
+    );
+  }
+
   useEffect(() => {
     setValue(String(user.balance));
   }, [user.balance]);
@@ -193,10 +199,16 @@ function UserRow({
   }
 
   async function save() {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      setErr("Enter a valid balance.");
+      return;
+    }
+
     setSaving(true);
     setErr(null);
     setSaved(false);
-    const nextBalance = Math.max(0, Number(value) || 0);
+    const nextBalance = Math.max(0, parsed);
     const { data, error } = await supabase.rpc("admin_set_balance", {
       p_user_id: user.id,
       p_balance: nextBalance,
@@ -205,15 +217,18 @@ function UserRow({
     if (error) {
       setErr(error.message);
     } else {
-      const updatedUser = data as Profile | null;
+      const updatedUser = (Array.isArray(data) ? data[0] : data) as Profile | null;
+      if (updatedUser) {
+        applyUserUpdate(updatedUser);
+      }
       setValue(String(updatedUser?.balance ?? nextBalance));
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
       if (currentUser?.id === user.id) {
         await refreshProfile();
       }
-      queryClient.invalidateQueries({ queryKey: ["all-profiles"] });
-      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+      await queryClient.invalidateQueries({ queryKey: ["all-profiles"] });
+      await queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
     }
   }
 
