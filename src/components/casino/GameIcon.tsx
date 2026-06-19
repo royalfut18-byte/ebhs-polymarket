@@ -1,6 +1,6 @@
 "use client";
 
-import { Bomb, ChevronsUpDown, CircleDot, Crown, Dice5, Disc3, Rocket, Spade, TrendingUp } from "lucide-react";
+import { Bomb, ChevronsUpDown, CircleDot, Crown, Dice5, Disc3, HelpCircle, Rocket, Spade, TrendingUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { GAME_BY_SLUG } from "@/lib/casino/games";
 import type { CasinoGame } from "@/lib/types";
@@ -17,6 +17,13 @@ const ICONS: Record<CasinoGame, LucideIcon> = {
   plinko: CircleDot,
 };
 
+const FALLBACK_ICON = HelpCircle;
+const FALLBACK_META = {
+  c1: "#475569",
+  c2: "#1e293b",
+  glow: "rgba(71,85,105,0.45)",
+};
+
 // A glossy gradient "medallion" icon for a casino game — replaces flat emoji
 // with a consistent, premium icon system (gradient fill, inner gloss, glow).
 export default function GameIcon({
@@ -24,12 +31,12 @@ export default function GameIcon({
   size = 56,
   className = "",
 }: {
-  game: CasinoGame;
+  game: string;
   size?: number;
   className?: string;
 }) {
-  const meta = GAME_BY_SLUG[game];
-  const Icon = ICONS[game];
+  const meta = GAME_BY_SLUG[game as CasinoGame] ?? FALLBACK_META;
+  const Icon = ICONS[game as CasinoGame] ?? FALLBACK_ICON;
   return (
     <div
       className={`relative flex shrink-0 items-center justify-center rounded-2xl ring-1 ring-white/20 ${className}`}
