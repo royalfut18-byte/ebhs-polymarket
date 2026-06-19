@@ -1,6 +1,6 @@
 "use client";
 
-import { Bomb, ChevronsUpDown, Crown, Dice5, Disc3, Hash, Rocket, Spade, TrendingUp } from "lucide-react";
+import { Bomb, ChevronsUpDown, CircleDot, Crown, Dice5, Disc3, Hash, Rocket, Spade, TrendingUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { GAME_BY_SLUG } from "@/lib/casino/games";
 import type { CasinoGame } from "@/lib/types";
@@ -15,6 +15,7 @@ const ICONS: Record<CasinoGame, LucideIcon> = {
   hilo: ChevronsUpDown,
   keno: Hash,
   baccarat: Crown,
+  plinko: CircleDot,
 };
 
 // A glossy gradient "medallion" icon for a casino game — replaces flat emoji

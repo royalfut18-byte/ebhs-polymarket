@@ -34,13 +34,13 @@ export default function CasinoHome() {
               </span>
             </h1>
             <p className="mt-3 max-w-lg text-sm text-ink-dim sm:text-base">
-              Nine classic games, all on the house&apos;s fake credits. Server-decided odds, instant
+              Ten classic games, all on the house&apos;s fake credits. Server-decided odds, instant
               payouts, and every win climbs the leaderboard. Zero real money.
             </p>
             <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-ink-dim">
               <Chip icon={<Zap size={13} className="text-amber-300" />}>Instant payouts</Chip>
               <Chip>Provably server-side</Chip>
-              <Chip>9 games</Chip>
+              <Chip>10 games</Chip>
             </div>
           </div>
         </section>

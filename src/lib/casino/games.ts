@@ -22,6 +22,7 @@ export const GAMES: GameMeta[] = [
   { slug: "dice", name: "Dice", blurb: "Roll over or under your number.", tag: "1.98× even", accent: "from-emerald-500/20 to-teal-500/5", c1: "#34d399", c2: "#14b8a6", glow: "rgba(16,185,129,0.55)" },
   { slug: "crash", name: "Crash", blurb: "Cash out before it busts.", tag: "Up to 1000×", accent: "from-rose-500/20 to-orange-500/5", c1: "#fb7185", c2: "#f97316", glow: "rgba(244,63,94,0.55)" },
   { slug: "mines", name: "Mines", blurb: "Find gems, dodge the bombs.", tag: "1–24 mines", accent: "from-amber-500/20 to-yellow-500/5", c1: "#f59e0b", c2: "#fbbf24", glow: "rgba(245,158,11,0.55)" },
+  { slug: "plinko", name: "Plinko", blurb: "Drop the ball, chase the edges.", tag: "Up to 264×", accent: "from-pink-500/20 to-rose-500/5", c1: "#f472b6", c2: "#fb7185", glow: "rgba(244,114,182,0.55)" },
   { slug: "limbo", name: "Limbo", blurb: "How high will it go?", tag: "Up to 1000×", accent: "from-violet-500/20 to-fuchsia-500/5", c1: "#a855f7", c2: "#d946ef", glow: "rgba(168,85,247,0.55)" },
   { slug: "blackjack", name: "Blackjack", blurb: "Beat the dealer to 21.", tag: "BJ pays 3:2", accent: "from-sky-500/20 to-blue-500/5", c1: "#38bdf8", c2: "#3b82f6", glow: "rgba(56,189,248,0.55)" },
   { slug: "roulette", name: "Roulette", blurb: "Spin the wheel, place your chips.", tag: "35:1 max", accent: "from-red-500/20 to-rose-500/5", c1: "#ef4444", c2: "#f43f5e", glow: "rgba(239,68,68,0.55)" },
