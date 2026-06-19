@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,12 +32,23 @@ export default function ArenaLobby() {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
 
-  const { data: players = [] } = useQuery({ queryKey: ["arena-players-list"], queryFn: fetchArenaPlayers });
-  const { data: challenges = [] } = useQuery({ queryKey: ["arena-challenges"], queryFn: fetchMyChallenges });
-  const { data: matches = [] } = useQuery({
+  // Polling intervals are a safety net so the lobby stays correct even if the
+  // realtime websocket hiccups (which previously left challengers stuck).
+  const { data: players = [] } = useQuery({
+    queryKey: ["arena-players-list"],
+    queryFn: fetchArenaPlayers,
+    refetchInterval: 10000,
+  });
+  const { data: challenges = [] } = useQuery({
+    queryKey: ["arena-challenges"],
+    queryFn: fetchMyChallenges,
+    refetchInterval: 2500,
+  });
+  const { data: matches = [], isSuccess: matchesLoaded } = useQuery({
     queryKey: ["arena-my-matches", user?.id],
     queryFn: () => fetchMyMatches(user!.id),
     enabled: !!user,
+    refetchInterval: 2500,
   });
 
   const nameOf = useMemo(() => {
@@ -45,30 +56,49 @@ export default function ArenaLobby() {
     return (id: string) => m.get(id) ?? "player";
   }, [players]);
 
-  // Realtime: challenge + match changes. Auto-open a match when mine is accepted.
+  // Realtime invalidation only (fast path). Keyed on uid so the channel isn't
+  // torn down whenever the session refreshes — that churn used to drop the
+  // "your challenge was accepted" event. Navigation is handled separately below
+  // off the matches query, so it works even if realtime misses an event.
+  const uid = user?.id;
   useEffect(() => {
-    if (!user) return;
+    if (!uid) return;
     const ch = supabase
       .channel("arena-lobby-feed")
-      .on("postgres_changes", { event: "*", schema: "public", table: "arena_challenges" }, (payload) => {
-        qc.invalidateQueries({ queryKey: ["arena-challenges"] });
-        const row = payload.new as ArenaChallenge | null;
-        if (row && row.status === "accepted" && row.challenger_id === user.id && row.match_id) {
-          refreshProfile();
-          router.push(`/arena/${row.match_id}`);
-        }
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "arena_challenges" }, () =>
+        qc.invalidateQueries({ queryKey: ["arena-challenges"] })
+      )
       .on("postgres_changes", { event: "*", schema: "public", table: "arena_match_players" }, () =>
-        qc.invalidateQueries({ queryKey: ["arena-my-matches", user.id] })
+        qc.invalidateQueries({ queryKey: ["arena-my-matches", uid] })
       )
       .on("postgres_changes", { event: "*", schema: "public", table: "arena_matches" }, () =>
-        qc.invalidateQueries({ queryKey: ["arena-my-matches", user.id] })
+        qc.invalidateQueries({ queryKey: ["arena-my-matches", uid] })
       )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [user, supabase, qc, router, refreshProfile]);
+  }, [uid, supabase, qc]);
+
+  // When a brand-new active match appears (someone accepted my challenge, or I
+  // accepted theirs), jump straight into it. The baseline captured on first load
+  // means pre-existing matches never trigger a navigation.
+  const matchBaseline = useRef<Set<string> | null>(null);
+  const navigated = useRef(false);
+  useEffect(() => {
+    if (!matchesLoaded || !uid) return;
+    if (matchBaseline.current === null) {
+      matchBaseline.current = new Set(matches.map((m) => m.id));
+      return;
+    }
+    if (navigated.current) return;
+    const fresh = matches.find((m) => m.status === "active" && !matchBaseline.current!.has(m.id));
+    if (fresh) {
+      navigated.current = true;
+      refreshProfile();
+      router.push(`/arena/${fresh.id}`);
+    }
+  }, [matches, matchesLoaded, uid, router, refreshProfile]);
 
   const incoming = challenges.filter((c) => c.opponent_id === user?.id);
   const outgoing = challenges.filter((c) => c.challenger_id === user?.id);

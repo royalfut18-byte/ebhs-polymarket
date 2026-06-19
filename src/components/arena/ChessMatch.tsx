@@ -30,6 +30,7 @@ export default function ChessMatch({ matchId }: { matchId: string }) {
   const { data: match, isLoading, isError } = useQuery({
     queryKey: ["arena-match", matchId],
     queryFn: () => fetchMatch(matchId),
+    refetchInterval: 2500, // realtime fallback so moves still sync if a push is missed
   });
   const { data: players = [] } = useQuery({
     queryKey: ["arena-players", matchId],

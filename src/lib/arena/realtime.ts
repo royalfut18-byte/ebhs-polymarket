@@ -4,31 +4,41 @@ import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 
-// Tracks who is currently online via Supabase Realtime Presence on a shared
-// "arena-lobby" channel. Returns the set of online user ids. No DB needed.
+// Tracks who is online via a DB heartbeat (arena_presence table): the client
+// upserts its last_seen every 12s and polls every 8s for everyone seen in the
+// last 30s. This is reliable regardless of the realtime websocket state (the
+// previous Realtime-Presence approach was flaky). Returns online user ids.
+const ONLINE_WINDOW_MS = 30000;
+
 export function useArenaPresence(): Set<string> {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
+  const uid = user?.id;
   const [online, setOnline] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!user) return;
+    if (!uid) return;
     const supabase = getSupabase();
-    const channel = supabase.channel("arena-lobby", {
-      config: { presence: { key: user.id } },
-    });
-    channel
-      .on("presence", { event: "sync" }, () => {
-        setOnline(new Set(Object.keys(channel.presenceState())));
-      })
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          await channel.track({ username: profile?.username ?? "", at: Date.now() });
-        }
-      });
-    return () => {
-      supabase.removeChannel(channel);
+    let active = true;
+
+    const beat = async () => {
+      await supabase.from("arena_presence").upsert({ user_id: uid, last_seen: new Date().toISOString() });
     };
-  }, [user, profile?.username]);
+    const refresh = async () => {
+      const since = new Date(Date.now() - ONLINE_WINDOW_MS).toISOString();
+      const { data } = await supabase.from("arena_presence").select("user_id").gt("last_seen", since);
+      if (active && data) setOnline(new Set((data as { user_id: string }[]).map((r) => r.user_id)));
+    };
+
+    beat();
+    refresh();
+    const beatTimer = setInterval(beat, 12000);
+    const pollTimer = setInterval(refresh, 8000);
+    return () => {
+      active = false;
+      clearInterval(beatTimer);
+      clearInterval(pollTimer);
+    };
+  }, [uid]);
 
   return online;
 }

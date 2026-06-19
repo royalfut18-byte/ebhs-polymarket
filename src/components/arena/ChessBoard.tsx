@@ -1,11 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentProps, type FC } from "react";
+import dynamic from "next/dynamic";
 import { Chess, type Square } from "chess.js";
-import clsx from "clsx";
 
-const GLYPH: Record<string, string> = { p: "♟", n: "♞", b: "♝", r: "♜", q: "♛", k: "♚" };
-const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
+// react-chessboard ships crisp SVG pieces (chess.com / lichess quality) and
+// handles drag-and-drop + the promotion dialog. We load it client-only to avoid
+// any SSR window access, and keep chess.js as the single source of legality.
+type ChessboardProps = ComponentProps<typeof import("react-chessboard")["Chessboard"]>;
+const Chessboard = dynamic(() => import("react-chessboard").then((m) => m.Chessboard), {
+  ssr: false,
+}) as FC<ChessboardProps>;
 
 export interface BoardMove {
   from: string;
@@ -13,8 +18,8 @@ export interface BoardMove {
   promotion?: string;
 }
 
-// A click-to-move chess board. Legal moves, check, last-move and promotion are
-// all computed locally with chess.js — the single source of truth for legality.
+type SquareStyles = Record<string, Record<string, string | number>>;
+
 export default function ChessBoard({
   fen,
   orientation,
@@ -28,6 +33,23 @@ export default function ChessBoard({
   lastMove?: { from: string; to: string } | null;
   onMove: (m: BoardMove) => void;
 }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(360);
+
+  // Size the board to its container (capped), responsively.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.clientWidth;
+      if (w) setWidth(Math.min(480, Math.floor(w)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const chess = useMemo(() => {
     try {
       return new Chess(fen);
@@ -35,135 +57,131 @@ export default function ChessBoard({
       return new Chess();
     }
   }, [fen]);
-
-  const [selected, setSelected] = useState<string | null>(null);
-  const [promo, setPromo] = useState<{ from: string; to: string } | null>(null);
-
   const turn = chess.turn(); // 'w' | 'b'
 
-  const legal = useMemo(() => {
-    if (!selected) return [] as { to: string; promotion?: string }[];
+  const [moveFrom, setMoveFrom] = useState<string>("");
+  const [optionSquares, setOptionSquares] = useState<SquareStyles>({});
+
+  // Clear any in-progress selection when the position or our turn changes.
+  useEffect(() => {
+    setMoveFrom("");
+    setOptionSquares({});
+  }, [fen, canMove]);
+
+  function legalFrom(sq: string) {
     try {
-      return chess
-        .moves({ square: selected as Square, verbose: true })
-        .map((m) => ({ to: m.to as string, promotion: m.promotion as string | undefined }));
+      return chess.moves({ square: sq as Square, verbose: true });
     } catch {
       return [];
     }
-  }, [chess, selected]);
-  const targets = useMemo(() => new Set(legal.map((m) => m.to)), [legal]);
-
-  const checkSquare = useMemo(() => {
-    if (!chess.inCheck()) return null;
-    for (const row of chess.board()) {
-      for (const sq of row) {
-        if (sq && sq.type === "k" && sq.color === turn) return sq.square as string;
-      }
-    }
-    return null;
-  }, [chess, turn]);
-
-  const ranks = orientation === "white" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
-  const files = orientation === "white" ? FILES : [...FILES].reverse();
-
-  function clickSquare(sq: string) {
-    if (!canMove || promo) return;
-    const piece = chess.get(sq as Square);
-
-    if (selected) {
-      if (sq === selected) {
-        setSelected(null);
-        return;
-      }
-      if (targets.has(sq)) {
-        const needsPromo = legal.some((m) => m.to === sq && m.promotion);
-        if (needsPromo) {
-          setPromo({ from: selected, to: sq });
-        } else {
-          onMove({ from: selected, to: sq });
-          setSelected(null);
-        }
-        return;
-      }
-      if (piece && piece.color === turn) {
-        setSelected(sq);
-        return;
-      }
-      setSelected(null);
-      return;
-    }
-
-    if (piece && piece.color === turn) setSelected(sq);
   }
 
-  return (
-    <div className="relative mx-auto w-full max-w-[480px]">
-      <div className="grid aspect-square w-full grid-cols-8 overflow-hidden rounded-xl ring-1 ring-white/10">
-        {ranks.map((rank) =>
-          files.map((file) => {
-            const sq = `${file}${rank}`;
-            const piece = chess.get(sq as Square);
-            const dark = (FILES.indexOf(file) + rank) % 2 === 0;
-            const isSel = selected === sq;
-            const isTarget = targets.has(sq);
-            const isLast = lastMove && (lastMove.from === sq || lastMove.to === sq);
-            const isCheck = checkSquare === sq;
-            return (
-              <button
-                key={sq}
-                onClick={() => clickSquare(sq)}
-                className={clsx(
-                  "relative flex items-center justify-center leading-none transition-colors",
-                  dark ? "bg-[#5c7a52]" : "bg-[#cdd3b4]",
-                  isSel && "!bg-[#b9c45e]",
-                  isLast && !isSel && "!bg-[#9bad5a]",
-                  isCheck && "!bg-[#d06464]"
-                )}
-                style={{ cursor: canMove && (piece?.color === turn || isTarget) ? "pointer" : "default" }}
-              >
-                {piece && (
-                  <span
-                    className="select-none text-3xl drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)] sm:text-[2.6rem]"
-                    style={{
-                      color: piece.color === "w" ? "#fefefe" : "#16161c",
-                      textShadow: piece.color === "w" ? "0 0 1px #555, 0 1px 1px rgba(0,0,0,.4)" : undefined,
-                    }}
-                  >
-                    {GLYPH[piece.type]}
-                  </span>
-                )}
-                {isTarget && !piece && (
-                  <span className="absolute h-1/4 w-1/4 rounded-full bg-black/25" />
-                )}
-                {isTarget && piece && (
-                  <span className="absolute inset-1 rounded-full ring-4 ring-black/25" />
-                )}
-              </button>
-            );
-          })
-        )}
-      </div>
+  function optionStyles(sq: string): SquareStyles {
+    const moves = legalFrom(sq);
+    if (moves.length === 0) return {};
+    const styles: SquareStyles = {};
+    for (const m of moves) {
+      const capture = !!chess.get(m.to as Square);
+      styles[m.to] = {
+        background: capture
+          ? "radial-gradient(circle, rgba(0,0,0,0.3) 82%, transparent 82%)"
+          : "radial-gradient(circle, rgba(0,0,0,0.3) 24%, transparent 24%)",
+        borderRadius: "50%",
+      };
+    }
+    styles[sq] = { background: "rgba(255, 241, 120, 0.55)" };
+    return styles;
+  }
 
-      {promo && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60">
-          <div className="flex gap-2 rounded-2xl border border-border bg-bg-card p-3">
-            {(["q", "r", "b", "n"] as const).map((p) => (
-              <button
-                key={p}
-                onClick={() => {
-                  onMove({ from: promo.from, to: promo.to, promotion: p });
-                  setPromo(null);
-                  setSelected(null);
-                }}
-                className="flex h-12 w-12 items-center justify-center rounded-xl bg-bg-soft text-3xl hover:bg-bg-hover"
-                style={{ color: turn === "w" ? "#fefefe" : "#16161c" }}
-              >
-                {GLYPH[p]}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+  function commit(from: string, to: string, promotion?: string): boolean {
+    const game = new Chess(fen);
+    let res;
+    try {
+      res = game.move({ from, to, promotion: promotion ?? "q" });
+    } catch {
+      return false;
+    }
+    if (!res) return false;
+    onMove({ from, to, promotion: res.promotion });
+    return true;
+  }
+
+  function handleSquareClick(square: string) {
+    if (!canMove) return;
+    if (!moveFrom) {
+      const piece = chess.get(square as Square);
+      if (piece && piece.color === turn) {
+        setMoveFrom(square);
+        setOptionSquares(optionStyles(square));
+      }
+      return;
+    }
+    if (square === moveFrom) {
+      setMoveFrom("");
+      setOptionSquares({});
+      return;
+    }
+    const isTarget = legalFrom(moveFrom).some((m) => m.to === square);
+    if (isTarget) {
+      commit(moveFrom, square); // click promotions auto-queen; drag offers the dialog
+      setMoveFrom("");
+      setOptionSquares({});
+      return;
+    }
+    const piece = chess.get(square as Square);
+    if (piece && piece.color === turn) {
+      setMoveFrom(square);
+      setOptionSquares(optionStyles(square));
+    } else {
+      setMoveFrom("");
+      setOptionSquares({});
+    }
+  }
+
+  function handleDrop(from: string, to: string): boolean {
+    if (!canMove) return false;
+    return commit(from, to);
+  }
+
+  function handlePromotion(piece?: string, from?: string, to?: string): boolean {
+    if (!piece || !from || !to) return false;
+    return commit(from, to, piece[1].toLowerCase()); // e.g. "wQ" -> "q"
+  }
+
+  const squareStyles = useMemo<SquareStyles>(() => {
+    const s: SquareStyles = {};
+    if (lastMove) {
+      s[lastMove.from] = { background: "rgba(255, 213, 79, 0.45)" };
+      s[lastMove.to] = { background: "rgba(255, 213, 79, 0.45)" };
+    }
+    if (chess.inCheck()) {
+      for (const row of chess.board()) {
+        for (const p of row) {
+          if (p && p.type === "k" && p.color === turn) {
+            s[p.square] = { background: "radial-gradient(circle, rgba(220,60,60,0.9) 36%, transparent 75%)" };
+          }
+        }
+      }
+    }
+    return { ...s, ...optionSquares };
+  }, [chess, lastMove, optionSquares, turn]);
+
+  return (
+    <div ref={wrapRef} className="mx-auto w-full max-w-[480px]">
+      <Chessboard
+        id="arena-chess"
+        position={fen}
+        boardWidth={width}
+        boardOrientation={orientation}
+        arePiecesDraggable={canMove}
+        onPieceDrop={handleDrop}
+        onSquareClick={handleSquareClick}
+        onPromotionPieceSelect={handlePromotion}
+        customSquareStyles={squareStyles}
+        customBoardStyle={{ borderRadius: "12px", boxShadow: "0 12px 34px rgba(0,0,0,0.4)" }}
+        customDarkSquareStyle={{ backgroundColor: "#769656" }}
+        customLightSquareStyle={{ backgroundColor: "#eeeed2" }}
+      />
     </div>
   );
 }
