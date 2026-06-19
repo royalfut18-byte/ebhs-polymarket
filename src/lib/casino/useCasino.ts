@@ -43,14 +43,20 @@ export function useCasino() {
   const play = useCallback(
     async <T = Record<string, unknown>>(
       fn: string,
-      args: Record<string, unknown>
+      args: Record<string, unknown>,
+      opts?: { allowConcurrent?: boolean }
     ): Promise<T> => {
       // Synchronous guard: reject concurrent calls immediately without waiting
-      // for React to re-render with busy=true (which happens too late).
-      if (busyRef.current) throw new Error("busy");
-      busyRef.current = true;
+      // for React to re-render with busy=true (which happens too late). Games
+      // that intentionally fire several bets at once (e.g. Plinko's multi-ball)
+      // opt out with allowConcurrent so each drop is its own independent bet.
+      const concurrent = opts?.allowConcurrent ?? false;
+      if (!concurrent) {
+        if (busyRef.current) throw new Error("busy");
+        busyRef.current = true;
+        setBusy(true);
+      }
       setError(null);
-      setBusy(true);
       try {
         const { data, error: rpcError } = await supabase.rpc(fn, args);
         if (rpcError) throw new Error(rpcError.message);
@@ -64,8 +70,10 @@ export function useCasino() {
         if (msg) setError(msg);
         throw e;
       } finally {
-        busyRef.current = false;
-        setBusy(false);
+        if (!concurrent) {
+          busyRef.current = false;
+          setBusy(false);
+        }
       }
     },
     [supabase, refreshProfile, qc, user]

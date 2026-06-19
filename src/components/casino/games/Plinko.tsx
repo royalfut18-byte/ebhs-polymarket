@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
@@ -28,6 +28,11 @@ interface PlinkoResult {
   win: boolean;
 }
 
+interface Ball {
+  id: number;
+  result: PlinkoResult;
+}
+
 // Board geometry (SVG units). The viewBox scales to fit the canvas width.
 const W = 340;
 const PAD = 20;
@@ -38,25 +43,31 @@ const BUCKET_H = 24;
 
 export default function Plinko() {
   const { profile } = useAuth();
-  const { play, busy, error } = useCasino();
+  const { play, error } = useCasino();
 
   const [amount, setAmount] = useState(10);
   const [rows, setRows] = useState(12);
   const [risk, setRisk] = useState<PlinkoRisk>("medium");
-  const [animating, setAnimating] = useState(false);
-  const [drop, setDrop] = useState<{ id: number; result: PlinkoResult } | null>(null);
-  // The bucket to flash once a ball has settled in it.
-  const [landed, setLanded] = useState<{ bucket: number; result: PlinkoResult } | null>(null);
+  // Multiple balls can be in flight at once (Stake-style rapid drops).
+  const [balls, setBalls] = useState<Ball[]>([]);
+  // Buckets that should flash because a ball just landed in them.
+  const [flashes, setFlashes] = useState<{ id: number; bucket: number }[]>([]);
+  const [lastResult, setLastResult] = useState<PlinkoResult | null>(null);
+  const seq = useRef(0);
 
   const multipliers = useMemo(() => plinkoMultipliers(risk, rows), [risk, rows]);
   const g = (W - 2 * PAD) / rows;
   const boardH = TOP + rows * ROW_GAP + 6 + BUCKET_H + 8;
+  const bucketY = TOP + rows * ROW_GAP + 6;
+  const bucketW = g - 2;
+  const inFlight = balls.length > 0;
 
-  // Changing the rows/risk reshapes the whole board, so drop any resting ball
-  // and bucket highlight from the previous round (their geometry no longer fits).
+  // The board reshapes when rows/risk change, so the rows/risk controls are
+  // locked while balls are falling — meaning this only fires between rounds.
   useEffect(() => {
-    setDrop(null);
-    setLanded(null);
+    setBalls([]);
+    setFlashes([]);
+    setLastResult(null);
   }, [rows, risk]);
 
   // Pegs: a triangle of dots, rows r = 1..rows with r+1 pegs each.
@@ -70,52 +81,48 @@ export default function Plinko() {
     return out;
   }, [rows, g]);
 
-  // Waypoints for the current drop, derived from the server-returned path.
-  const path = useMemo(() => {
-    if (!drop) return null;
+  // Waypoints for one ball, derived from the server-returned left/right path.
+  function waypoints(result: PlinkoResult) {
     const pts: { x: number; y: number }[] = [{ x: CENTER, y: TOP - 8 }];
     let r = 0;
-    for (let s = 1; s <= drop.result.rows; s++) {
-      if (drop.result.path[s - 1] === 1) r += 1;
+    for (let s = 1; s <= result.rows; s++) {
+      if (result.path[s - 1] === 1) r += 1;
       pts.push({ x: CENTER + (r - s / 2) * g, y: TOP + s * ROW_GAP });
     }
-    const bucketY = TOP + drop.result.rows * ROW_GAP + 6;
-    pts.push({ x: CENTER + (drop.result.bucket - drop.result.rows / 2) * g, y: bucketY + BUCKET_H / 2 });
+    pts.push({ x: CENTER + (result.bucket - result.rows / 2) * g, y: bucketY + BUCKET_H / 2 });
     return { xs: pts.map((p) => p.x), ys: pts.map((p) => p.y) };
-  }, [drop, g]);
+  }
 
   async function dropBall() {
-    if (animating) return;
-    setLanded(null);
-    setAnimating(true);
+    if (!profile) return;
     try {
-      const r = await play<PlinkoResult>("casino_plinko", {
-        p_bet: amount,
-        p_rows: rows,
-        p_risk: risk,
-      });
-      setDrop({ id: Date.now(), result: { ...r, path: r.path.map(Number) } });
+      const r = await play<PlinkoResult>(
+        "casino_plinko",
+        { p_bet: amount, p_rows: rows, p_risk: risk },
+        { allowConcurrent: true }
+      );
+      const id = (seq.current += 1);
+      setBalls((b) => [...b, { id, result: { ...r, path: r.path.map(Number) } }]);
     } catch {
-      setAnimating(false); // error surfaced by hook
+      /* error surfaced by hook */
     }
   }
 
-  function onSettled() {
-    if (!drop) return;
-    setAnimating(false);
-    setLanded({ bucket: drop.result.bucket, result: drop.result });
-    if (drop.result.win) celebrate(drop.result.multiplier >= 10);
+  function onSettled(ball: Ball) {
+    setBalls((b) => b.filter((x) => x.id !== ball.id));
+    setLastResult(ball.result);
+    const fid = (seq.current += 1);
+    setFlashes((f) => [...f, { id: fid, bucket: ball.result.bucket }]);
+    window.setTimeout(() => setFlashes((f) => f.filter((x) => x.id !== fid)), 450);
+    if (ball.result.win) celebrate(ball.result.multiplier >= 10);
   }
-
-  const bucketY = TOP + rows * ROW_GAP + 6;
-  const bucketW = g - 2;
 
   return (
     <GameShell
       game="plinko"
       controls={
         <>
-          <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={animating} />
+          <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} />
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Risk</label>
@@ -124,7 +131,7 @@ export default function Plinko() {
                 <button
                   key={rk}
                   onClick={() => setRisk(rk)}
-                  disabled={animating}
+                  disabled={inFlight}
                   className={clsx("btn flex-1 capitalize", risk === rk ? "btn-primary" : "btn-ghost")}
                 >
                   {rk}
@@ -144,28 +151,32 @@ export default function Plinko() {
               max={PLINKO_MAX_ROWS}
               step={1}
               value={rows}
-              disabled={animating}
+              disabled={inFlight}
               onChange={(e) => setRows(parseInt(e.target.value))}
             />
+            {inFlight && (
+              <span className="text-[11px] text-ink-faint">Rows &amp; risk lock while balls are dropping.</span>
+            )}
           </div>
 
-          <button onClick={dropBall} disabled={animating || !profile} className="btn btn-primary py-3 text-base">
-            {animating ? "Dropping…" : `Drop ${formatMoney(amount)}`}
+          <button onClick={dropBall} disabled={!profile} className="btn btn-primary py-3 text-base">
+            Drop {formatMoney(amount)}
+            {inFlight && <span className="ml-1 opacity-70">· {balls.length} in play</span>}
           </button>
 
-          {landed && (
+          {lastResult && (
             <div
               className={clsx(
                 "rounded-xl border px-3 py-2 text-center text-sm font-semibold",
-                landed.result.win
+                lastResult.win
                   ? "border-yes/30 bg-yes/10 text-yes-text"
                   : "border-no/30 bg-no/10 text-no-text"
               )}
             >
-              {landed.result.multiplier.toFixed(landed.result.multiplier >= 100 ? 0 : 2)}× —{" "}
-              {landed.result.win
-                ? `Won ${formatMoney(landed.result.payout)}`
-                : `Lost ${formatMoney(amount - landed.result.payout)}`}
+              {lastResult.multiplier.toFixed(lastResult.multiplier >= 100 ? 0 : 2)}× —{" "}
+              {lastResult.win
+                ? `Won ${formatMoney(lastResult.payout)}`
+                : `Lost ${formatMoney(amount - lastResult.payout)}`}
             </div>
           )}
           {error && <p className="text-center text-sm text-no-text">{error}</p>}
@@ -173,11 +184,7 @@ export default function Plinko() {
       }
     >
       <div className="flex h-full items-center justify-center">
-        <svg
-          viewBox={`0 0 ${W} ${boardH}`}
-          className="h-auto w-full max-w-[460px]"
-          style={{ maxHeight: 460 }}
-        >
+        <svg viewBox={`0 0 ${W} ${boardH}`} className="h-auto w-full max-w-[460px]" style={{ maxHeight: 460 }}>
           {/* pegs */}
           {pegs.map((p, i) => (
             <circle key={i} cx={p.x} cy={p.y} r={2.4} fill="rgba(255,255,255,0.45)" />
@@ -186,7 +193,7 @@ export default function Plinko() {
           {/* buckets */}
           {multipliers.map((m, k) => {
             const cx = CENTER + (k - rows / 2) * g;
-            const isHit = landed?.bucket === k;
+            const isHit = flashes.some((f) => f.bucket === k);
             const color = bucketColor(k, rows);
             return (
               <g key={k}>
@@ -217,20 +224,23 @@ export default function Plinko() {
             );
           })}
 
-          {/* ball */}
-          {drop && path && (
-            <motion.circle
-              key={drop.id}
-              r={4.6}
-              fill="#fde047"
-              stroke="rgba(0,0,0,0.25)"
-              strokeWidth={0.6}
-              initial={{ cx: path.xs[0], cy: path.ys[0] }}
-              animate={{ cx: path.xs, cy: path.ys }}
-              transition={{ duration: Math.max(0.9, rows * 0.08), ease: "easeIn" }}
-              onAnimationComplete={onSettled}
-            />
-          )}
+          {/* balls in flight */}
+          {balls.map((ball) => {
+            const { xs, ys } = waypoints(ball.result);
+            return (
+              <motion.circle
+                key={ball.id}
+                r={4.6}
+                fill="#fde047"
+                stroke="rgba(0,0,0,0.25)"
+                strokeWidth={0.6}
+                initial={{ cx: xs[0], cy: ys[0] }}
+                animate={{ cx: xs, cy: ys }}
+                transition={{ duration: Math.max(0.9, ball.result.rows * 0.08), ease: "easeIn" }}
+                onAnimationComplete={() => onSettled(ball)}
+              />
+            );
+          })}
         </svg>
       </div>
     </GameShell>

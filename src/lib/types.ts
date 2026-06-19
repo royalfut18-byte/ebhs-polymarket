@@ -189,7 +189,6 @@ export type CasinoGame =
   | "limbo"
   | "crash"
   | "mines"
-  | "keno"
   | "roulette"
   | "blackjack"
   | "baccarat"

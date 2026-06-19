@@ -1,6 +1,6 @@
 "use client";
 
-import { Bomb, ChevronsUpDown, CircleDot, Crown, Dice5, Disc3, Hash, Rocket, Spade, TrendingUp } from "lucide-react";
+import { Bomb, ChevronsUpDown, CircleDot, Crown, Dice5, Disc3, Rocket, Spade, TrendingUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { GAME_BY_SLUG } from "@/lib/casino/games";
 import type { CasinoGame } from "@/lib/types";
@@ -13,7 +13,6 @@ const ICONS: Record<CasinoGame, LucideIcon> = {
   blackjack: Spade,
   roulette: Disc3,
   hilo: ChevronsUpDown,
-  keno: Hash,
   baccarat: Crown,
   plinko: CircleDot,
 };
