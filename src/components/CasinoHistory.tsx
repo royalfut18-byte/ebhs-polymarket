@@ -10,13 +10,20 @@ import clsx from "clsx";
 // The player's recent casino bets, for the portfolio page. Uses the same query
 // key the casino hook invalidates, so it stays in sync after each bet.
 export default function CasinoHistory({ userId }: { userId: string }) {
-  const { data: bets = [], isLoading } = useQuery({
+  const { data: bets = [], isLoading, isError } = useQuery({
     queryKey: ["casino-history", userId],
     queryFn: () => fetchCasinoHistory(userId, undefined, 50),
   });
 
   if (isLoading) {
     return <div className="card py-10 text-center text-sm text-ink-faint">Loading casino history…</div>;
+  }
+  if (isError) {
+    return (
+      <div className="card py-10 text-center text-sm text-ink-dim">
+        Couldn&apos;t load casino history right now.
+      </div>
+    );
   }
   if (bets.length === 0) {
     return (

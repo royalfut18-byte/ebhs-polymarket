@@ -1,5 +1,12 @@
 import PublicProfile from "@/components/PublicProfile";
 
-export default function UserProfilePage({ params }: { params: { username: string } }) {
-  return <PublicProfile username={params.username} />;
+type UserProfilePageParams = { username: string };
+
+export default async function UserProfilePage({
+  params,
+}: {
+  params: Promise<UserProfilePageParams> | UserProfilePageParams;
+}) {
+  const { username } = await Promise.resolve(params);
+  return <PublicProfile username={decodeURIComponent(username ?? "")} />;
 }

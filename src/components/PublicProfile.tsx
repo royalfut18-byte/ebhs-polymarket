@@ -15,9 +15,11 @@ import clsx from "clsx";
 import type { Market } from "@/lib/types";
 
 export default function PublicProfile({ username }: { username: string }) {
+  const normalizedUsername = username.trim().toLowerCase();
   const profileQuery = useQuery({
-    queryKey: ["public-profile", username.toLowerCase()],
-    queryFn: () => fetchProfileByUsername(username),
+    queryKey: ["public-profile", normalizedUsername],
+    enabled: normalizedUsername.length > 0,
+    queryFn: () => fetchProfileByUsername(normalizedUsername),
   });
   const profile = profileQuery.data;
 
@@ -107,8 +109,12 @@ export default function PublicProfile({ username }: { username: string }) {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-faint">
           Open positions
         </h2>
-        {positionsQuery.isLoading ? (
+        {positionsQuery.isLoading || marketsQuery.isLoading ? (
           <div className="card py-10 text-center text-sm text-ink-faint">Loading...</div>
+        ) : positionsQuery.isError || marketsQuery.isError ? (
+          <div className="card py-10 text-center text-sm text-ink-dim">
+            Couldn&apos;t load open positions right now.
+          </div>
         ) : (
           <PositionsTable rows={enriched} />
         )}
@@ -120,6 +126,10 @@ export default function PublicProfile({ username }: { username: string }) {
         </h2>
         {tradesQuery.isLoading ? (
           <div className="card py-10 text-center text-sm text-ink-faint">Loading...</div>
+        ) : tradesQuery.isError ? (
+          <div className="card py-10 text-center text-sm text-ink-dim">
+            Couldn&apos;t load trade history right now.
+          </div>
         ) : (tradesQuery.data ?? []).length === 0 ? (
           <div className="card py-10 text-center text-sm text-ink-dim">No trades yet.</div>
         ) : (
