@@ -25,7 +25,21 @@ const SEGMENTS: Segment[] = [
 ];
 const N = SEGMENTS.length;
 const SLICE = 360 / N;
-const DAY_MS = 24 * 60 * 60 * 1000;
+
+function nextMidnightUTC(): number {
+  const now = new Date();
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+}
+
+function alreadySpunToday(lastSpinAt: string): boolean {
+  const spun = new Date(lastSpinAt);
+  const now = new Date();
+  return (
+    spun.getUTCFullYear() === now.getUTCFullYear() &&
+    spun.getUTCMonth() === now.getUTCMonth() &&
+    spun.getUTCDate() === now.getUTCDate()
+  );
+}
 
 function slicePath(i: number, r = 92, cx = 100, cy = 100) {
   const a0 = ((i * SLICE - 90) * Math.PI) / 180;
@@ -52,11 +66,10 @@ export default function SpinWheel() {
   const [result, setResult] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const nextSpinAt = useMemo(() => {
-    if (!profile?.last_spin_at) return 0;
-    return new Date(profile.last_spin_at).getTime() + DAY_MS;
-  }, [profile?.last_spin_at]);
-  const onCooldown = Date.now() < nextSpinAt;
+  const onCooldown = useMemo(
+    () => !!profile?.last_spin_at && alreadySpunToday(profile.last_spin_at),
+    [profile?.last_spin_at]
+  );
 
   async function spin() {
     if (spinning || onCooldown || !profile) return;
@@ -167,7 +180,7 @@ export default function SpinWheel() {
 
       {onCooldown ? (
         <div className="relative text-center text-sm text-ink-faint">
-          Next spin available in <Countdown to={nextSpinAt} />
+          Next spin available in <Countdown to={nextMidnightUTC()} />
         </div>
       ) : (
         <button
