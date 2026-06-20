@@ -2,7 +2,7 @@
 // in supabase/migrations/0015_arena.sql.
 
 export type ArenaGame = "chess" | "uno";
-export type ArenaMatchStatus = "active" | "finished" | "void";
+export type ArenaMatchStatus = "lobby" | "active" | "finished" | "void";
 export type ChallengeStatus = "pending" | "accepted" | "declined" | "cancelled";
 
 export interface ChessMove {
@@ -74,4 +74,65 @@ export interface ArenaChatLine {
 export interface ArenaPlayerLite {
   id: string;
   username: string;
+}
+
+// ---------------------------------------------------------------------------
+// Uno
+// ---------------------------------------------------------------------------
+
+export type UnoColor = "r" | "y" | "g" | "b" | "w";
+export type UnoValue =
+  | "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+  | "skip" | "rev" | "draw2" | "wild" | "wild4";
+
+export interface UnoCard {
+  c: UnoColor;
+  v: UnoValue;
+}
+
+export interface UnoPlayer {
+  user_id: string;
+  username: string;
+  seat: number;
+  count?: number; // cards in hand (active game)
+  left?: boolean; // forfeited mid-game
+}
+
+export interface UnoLogLine {
+  u: string | null;
+  t: string;
+  at: string;
+}
+
+// The single safe snapshot returned by the uno_view() RPC.
+export interface UnoView {
+  status: ArenaMatchStatus | "lobby";
+  result?: string | null;
+  winner_id?: string | null;
+  pot: number;
+  stake: number;
+  max_players?: number;
+  host_id: string | null;
+  my_seat: number | null;
+  my_hand: UnoCard[];
+  color?: UnoColor;
+  direction?: number;
+  pending_draw?: number;
+  pending_type?: "draw2" | "wild4" | null;
+  current_user_id?: string | null;
+  top?: UnoCard | null;
+  players: UnoPlayer[];
+  log?: UnoLogLine[];
+  last_action_at?: string;
+}
+
+// A joinable lobby table (uno_open_tables() RPC).
+export interface UnoOpenTable {
+  match_id: string;
+  stake: number;
+  max_players: number;
+  created_at: string;
+  joined: number;
+  host_id: string | null;
+  host_username: string | null;
 }

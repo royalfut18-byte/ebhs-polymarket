@@ -4,15 +4,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Coins, Crown, Loader2, Swords, X } from "lucide-react";
+import { Coins, Crown, Loader2, Layers, Plus, Swords, X } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import { fetchArenaPlayers, fetchMyChallenges, fetchMyMatches } from "@/lib/arena/queries";
+import {
+  fetchArenaPlayers,
+  fetchMyChallenges,
+  fetchMyMatches,
+  fetchUnoOpenTables,
+} from "@/lib/arena/queries";
 import { useArenaPresence } from "@/lib/arena/realtime";
 import { formatMoney } from "@/lib/format";
 import { FadeIn } from "@/components/motion";
 import Avatar from "@/components/Avatar";
-import type { ArenaChallenge } from "@/lib/arena/types";
+import type { ArenaChallenge, UnoOpenTable } from "@/lib/arena/types";
 import clsx from "clsx";
 
 export default function ArenaLobby() {
@@ -27,6 +32,9 @@ export default function ArenaLobby() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [insufficient, setInsufficient] = useState<number | null>(null);
+  const [unoModal, setUnoModal] = useState(false);
+  const [unoStake, setUnoStake] = useState(50);
+  const [unoMax, setUnoMax] = useState(4);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -49,6 +57,11 @@ export default function ArenaLobby() {
     queryFn: () => fetchMyMatches(user!.id),
     enabled: !!user,
     refetchInterval: 2500,
+  });
+  const { data: unoTables = [] } = useQuery({
+    queryKey: ["uno-open-tables"],
+    queryFn: fetchUnoOpenTables,
+    refetchInterval: 4000,
   });
 
   const nameOf = useMemo(() => {
@@ -103,7 +116,8 @@ export default function ArenaLobby() {
   const incoming = challenges.filter((c) => c.opponent_id === user?.id);
   const outgoing = challenges.filter((c) => c.challenger_id === user?.id);
   const activeMatches = matches.filter((m) => m.status === "active");
-  const pastMatches = matches.filter((m) => m.status !== "active").slice(0, 8);
+  const myUnoLobbies = matches.filter((m) => m.game === "uno" && m.status === "lobby");
+  const pastMatches = matches.filter((m) => m.status !== "active" && m.status !== "lobby").slice(0, 8);
 
   const others = useMemo(() => {
     return players
@@ -176,6 +190,54 @@ export default function ArenaLobby() {
     qc.invalidateQueries({ queryKey: ["arena-challenges"] });
   }
 
+  async function createUno() {
+    if (unoStake <= 0) {
+      setErr("Stake must be greater than zero.");
+      return;
+    }
+    if ((profile?.balance ?? 0) < unoStake) {
+      setUnoModal(false);
+      setInsufficient(unoStake);
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    const { data, error } = await supabase.rpc("uno_create", { p_stake: unoStake, p_max: unoMax });
+    setBusy(false);
+    if (error) {
+      if (/insufficient/i.test(error.message)) {
+        setUnoModal(false);
+        setInsufficient(unoStake);
+      } else setErr(error.message);
+      return;
+    }
+    refreshProfile();
+    setUnoModal(false);
+    const matchId = (data as { match_id?: string } | null)?.match_id;
+    if (matchId) router.push(`/arena/${matchId}`);
+  }
+
+  async function joinUno(t: UnoOpenTable) {
+    if ((profile?.balance ?? 0) < t.stake) {
+      setInsufficient(t.stake);
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    const { error } = await supabase.rpc("uno_join", { p_match: t.match_id });
+    setBusy(false);
+    if (error) {
+      if (/insufficient/i.test(error.message)) setInsufficient(t.stake);
+      else {
+        setErr(error.message);
+        qc.invalidateQueries({ queryKey: ["uno-open-tables"] });
+      }
+      return;
+    }
+    refreshProfile();
+    router.push(`/arena/${t.match_id}`);
+  }
+
   if (loading || !profile) return <div className="py-20 text-center text-ink-faint">Loading…</div>;
 
   return (
@@ -188,8 +250,8 @@ export default function ArenaLobby() {
           </span>
           <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Challenge anyone. Winner takes the pot.</h1>
           <p className="mt-2 max-w-xl text-sm text-ink-dim">
-            Pick a player, set your stake, and send a challenge. When they accept, both stakes are held and the
-            winner scoops the whole pot. Play-money only. Chess is live now — Uno is coming next.
+            Challenge someone to chess, or open an Uno table for up to 8. Stakes are held when a game starts and the
+            winner scoops the whole pot. Play-money only.
           </p>
         </div>
       </section>
@@ -245,6 +307,64 @@ export default function ArenaLobby() {
           </div>
         </div>
       )}
+
+      {/* Uno tables */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide text-ink-dim">
+            <Layers size={15} className="text-brand-light" /> Uno tables
+          </h2>
+          <button
+            onClick={() => {
+              setErr(null);
+              setUnoModal(true);
+            }}
+            className="btn btn-ghost px-3 py-1.5 text-xs"
+          >
+            <Plus size={14} /> Create table
+          </button>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {myUnoLobbies.map((m) => (
+            <Link key={m.id} href={`/arena/${m.id}`} className="card flex items-center gap-3 p-4 hover:border-border-soft">
+              <Layers size={18} className="text-brand-light" />
+              <div className="flex-1">
+                <div className="text-sm font-semibold">Your table</div>
+                <div className="text-xs text-ink-faint">{formatMoney(m.stake)} each · waiting to start</div>
+              </div>
+              <span className="text-xs font-semibold text-brand-light">Open →</span>
+            </Link>
+          ))}
+          {unoTables
+            .filter((t) => !myUnoLobbies.some((m) => m.id === t.match_id))
+            .map((t) => {
+              const full = t.joined >= t.max_players;
+              return (
+                <div key={t.match_id} className="card flex items-center gap-3 p-4">
+                  <Avatar name={t.host_username ?? "host"} size={34} />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">@{t.host_username ?? "host"}&apos;s table</div>
+                    <div className="text-xs text-ink-faint">
+                      {formatMoney(t.stake)} each · {t.joined}/{t.max_players} joined
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => joinUno(t)}
+                    disabled={busy || full}
+                    className="btn btn-primary px-3 py-1.5 text-xs disabled:opacity-50"
+                  >
+                    {full ? "Full" : "Join"}
+                  </button>
+                </div>
+              );
+            })}
+          {myUnoLobbies.length === 0 && unoTables.length === 0 && (
+            <div className="card px-4 py-6 text-center text-sm text-ink-faint sm:col-span-2">
+              No open Uno tables. Create one and invite the lobby — up to 8 players, winner takes the pot.
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Players */}
       <div className="flex flex-col gap-2">
@@ -344,6 +464,53 @@ export default function ArenaLobby() {
           <button onClick={send} disabled={busy} className="btn btn-primary mt-4 w-full py-2.5">
             {busy ? <Loader2 size={16} className="animate-spin" /> : <Swords size={16} />}
             Send challenge
+          </button>
+        </Modal>
+      )}
+
+      {/* Create Uno table */}
+      {unoModal && (
+        <Modal onClose={() => setUnoModal(false)}>
+          <div className="flex items-center gap-2">
+            <Layers size={20} className="text-brand-light" />
+            <div className="text-lg font-bold">New Uno table</div>
+          </div>
+          <div className="mt-4 flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Stake per player</label>
+            <div className="relative">
+              <Coins size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-yellow-300" />
+              <input
+                type="number"
+                min={1}
+                step="1"
+                value={Number.isFinite(unoStake) ? unoStake : 0}
+                onChange={(e) => setUnoStake(Math.max(0, Math.round(parseFloat(e.target.value) || 0)))}
+                className="input pl-9 font-semibold tabular-nums"
+              />
+            </div>
+          </div>
+          <div className="mt-3 flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Max players</label>
+            <div className="flex gap-2">
+              {[2, 4, 6, 8].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setUnoMax(n)}
+                  className={clsx("btn flex-1", unoMax === n ? "btn-primary" : "btn-ghost")}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-ink-faint">
+            Your stake is held now. Everyone who joins adds the same stake; the first player to empty their hand takes the
+            whole pot. Your cash: {formatMoney(profile.balance)}.
+          </p>
+          {err && <p className="mt-2 text-sm text-no-text">{err}</p>}
+          <button onClick={createUno} disabled={busy} className="btn btn-primary mt-4 w-full py-2.5">
+            {busy ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+            Create &amp; open table
           </button>
         </Modal>
       )}

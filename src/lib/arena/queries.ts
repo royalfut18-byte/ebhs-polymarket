@@ -9,6 +9,8 @@ import type {
   ArenaMatch,
   ArenaMatchPlayer,
   ArenaPlayerLite,
+  UnoOpenTable,
+  UnoView,
 } from "./types";
 
 // Approved users who can be challenged (id + handle only — no real names).
@@ -69,6 +71,22 @@ export async function fetchMatchPlayers(matchId: string): Promise<ArenaMatchPlay
     .order("seat", { ascending: true });
   if (error) throw error;
   return (data as unknown as ArenaMatchPlayer[]) ?? [];
+}
+
+// Uno: the safe per-player snapshot (own hand + public state) via the RPC.
+export async function fetchUnoView(matchId: string): Promise<UnoView> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.rpc("uno_view", { p_match: matchId });
+  if (error) throw error;
+  return data as UnoView;
+}
+
+// Uno: open lobby tables anyone can join.
+export async function fetchUnoOpenTables(): Promise<UnoOpenTable[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.rpc("uno_open_tables");
+  if (error) throw error;
+  return (data as UnoOpenTable[]) ?? [];
 }
 
 export async function fetchMatchChat(matchId: string): Promise<ArenaChatLine[]> {
