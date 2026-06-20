@@ -33,13 +33,19 @@ export default function Roulette() {
   const [amount, setAmount] = useState(10);
   const [chips, setChips] = useState<Record<string, Bet>>({});
   const [result, setResult] = useState<RouletteResult | null>(null);
+  // The outcome (number, win/loss badge, grid highlight) stays hidden until the
+  // wheel finishes spinning — otherwise the RPC result would spoil it instantly.
+  const [revealed, setRevealed] = useState(false);
+  const [spinning, setSpinning] = useState(false);
   const [nonce, setNonce] = useState(0);
 
+  const locked = busy || spinning;
   const total = useMemo(() => Object.values(chips).reduce((s, b) => s + b.amount, 0), [chips]);
 
   function placeBet(type: string, value: number) {
-    if (busy || amount <= 0) return;
+    if (locked || amount <= 0) return;
     setResult(null);
+    setRevealed(false);
     const key = `${type}:${value}`;
     setChips((prev) => ({
       ...prev,
@@ -49,12 +55,19 @@ export default function Roulette() {
 
   async function spin() {
     const bets = Object.values(chips);
-    if (bets.length === 0) return;
+    if (bets.length === 0 || locked) return;
     try {
+      setRevealed(false);
       const r = await play<RouletteResult>("casino_roulette", { p_bets: bets });
+      // Start the wheel toward the winning pocket, but keep the result hidden.
       setResult(r);
       setNonce((n) => n + 1);
-      if (r.payout > 0) setTimeout(() => celebrate(r.payout >= r.total * 5), 4200);
+      setSpinning(true);
+      setTimeout(() => {
+        setSpinning(false);
+        setRevealed(true);
+        if (r.payout > 0) celebrate(r.payout >= r.total * 5);
+      }, 4200);
     } catch {
       /* surfaced by hook */
     }
@@ -66,7 +79,7 @@ export default function Roulette() {
     return (
       <button
         onClick={() => placeBet(type, value)}
-        disabled={busy}
+        disabled={locked}
         className={clsx(
           "relative rounded-lg border border-border px-2 py-2 text-xs font-bold transition-colors hover:bg-white/[0.07] disabled:opacity-50",
           className
@@ -87,7 +100,7 @@ export default function Roulette() {
       game="roulette"
       controls={
         <>
-          <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={busy} label="Chip size" />
+          <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={locked} label="Chip size" />
           <div className="rounded-xl border border-border bg-bg-soft/50 px-3 py-2">
             <div className="text-[10px] uppercase tracking-wide text-ink-faint">Total staked</div>
             <div className="text-lg font-bold tabular-nums">{formatMoney(total)}</div>
@@ -112,14 +125,15 @@ export default function Roulette() {
               onClick={() => {
                 setChips({});
                 setResult(null);
+                setRevealed(false);
               }}
-              disabled={busy}
+              disabled={locked}
               className="btn btn-ghost flex-1"
             >
               Clear
             </button>
-            <button onClick={spin} disabled={busy || total === 0} className="btn btn-primary flex-1 py-3">
-              {busy ? "Spinning…" : "Spin"}
+            <button onClick={spin} disabled={locked || total === 0} className="btn btn-primary flex-1 py-3">
+              {locked ? "Spinning…" : "Spin"}
             </button>
           </div>
           {error && <p className="text-center text-sm text-no-text">{error}</p>}
@@ -129,7 +143,7 @@ export default function Roulette() {
       <div className="flex h-full flex-col gap-5">
         <div className="flex flex-col items-center justify-center gap-3 py-2">
           <RouletteWheel result={result?.spin ?? null} nonce={nonce} />
-          {result && (
+          {result && revealed && (
             <div className="flex items-center gap-2">
               <span
                 className={clsx(
@@ -150,11 +164,11 @@ export default function Roulette() {
         <div className="grid grid-cols-[repeat(13,minmax(0,1fr))] gap-1">
           <button
             onClick={() => placeBet("number", 0)}
-            disabled={busy}
+            disabled={locked}
             className={clsx(
               "row-span-3 rounded-md text-sm font-bold",
               colorOf(0),
-              result?.spin === 0 && "ring-2 ring-white"
+              revealed && result?.spin === 0 && "ring-2 ring-white"
             )}
           >
             0
@@ -165,11 +179,11 @@ export default function Roulette() {
               <button
                 key={n}
                 onClick={() => placeBet("number", n)}
-                disabled={busy}
+                disabled={locked}
                 className={clsx(
                   "relative rounded-md py-1.5 text-xs font-bold transition-transform hover:scale-105",
                   colorOf(n),
-                  result?.spin === n && "ring-2 ring-white"
+                  revealed && result?.spin === n && "ring-2 ring-white"
                 )}
               >
                 {n}
