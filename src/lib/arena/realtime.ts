@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSupabase } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
+import { fetchMyChallenges } from "./queries";
 
 // Tracks who is online via a single atomic DB heartbeat: arena_heartbeat()
 // stamps the caller's last_seen AND returns everyone seen in the last 30s in one
@@ -72,4 +74,37 @@ export function usePgSubscription(
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelName, table, filter, enabled]);
+}
+
+// Number of pending challenges where the current user is the opponent (i.e.
+// someone is waiting on YOU to accept/decline). Kept live across the whole app
+// via a realtime subscription plus a polling fallback, so the navbar badge
+// lights up wherever you are. Returns 0 when signed out.
+export function useIncomingChallengeCount(): number {
+  const { user } = useAuth();
+  const uid = user?.id;
+  const qc = useQueryClient();
+
+  const { data = [] } = useQuery({
+    queryKey: ["arena-incoming-challenges", uid],
+    queryFn: fetchMyChallenges,
+    enabled: !!uid,
+    refetchInterval: 6000,
+  });
+
+  useEffect(() => {
+    if (!uid) return;
+    const supabase = getSupabase();
+    const ch = supabase
+      .channel("nav-arena-challenges")
+      .on("postgres_changes", { event: "*", schema: "public", table: "arena_challenges" }, () =>
+        qc.invalidateQueries({ queryKey: ["arena-incoming-challenges", uid] })
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [uid, qc]);
+
+  return data.filter((c) => c.opponent_id === uid && c.status === "pending").length;
 }

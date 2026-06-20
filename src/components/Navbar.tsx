@@ -18,6 +18,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useAuth } from "./AuthProvider";
+import { useIncomingChallengeCount } from "@/lib/arena/realtime";
 import { formatMoney } from "@/lib/format";
 import Avatar from "./Avatar";
 import Logo from "./Logo";
@@ -25,6 +26,7 @@ import NavPortfolio from "./NavPortfolio";
 
 export default function Navbar() {
   const { profile, isStaff, loading, signOut } = useAuth();
+  const challengeCount = useIncomingChallengeCount();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [q, setQ] = useState(searchParams.get("q") ?? "");
@@ -81,9 +83,14 @@ export default function Navbar() {
           </Link>
           <Link
             href="/arena"
-            className="hidden items-center gap-1.5 text-sm font-medium text-ink-dim hover:text-ink md:flex"
+            className="relative hidden items-center gap-1.5 text-sm font-medium text-ink-dim hover:text-ink md:flex"
           >
             <Swords size={16} /> Arena
+            {challengeCount > 0 && (
+              <span className="absolute -right-2.5 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-no px-1 text-[10px] font-bold text-white ring-2 ring-bg">
+                {challengeCount}
+              </span>
+            )}
           </Link>
           <Link
             href="/leaderboard"
@@ -117,10 +124,15 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setMenuOpen((o) => !o)}
-                  className="flex items-center rounded-full ring-2 ring-transparent transition hover:ring-border"
+                  className="relative flex items-center rounded-full ring-2 ring-transparent transition hover:ring-border"
                   aria-label="Account menu"
                 >
                   <Avatar name={profile.username} size={36} />
+                  {challengeCount > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-no px-1 text-[10px] font-bold text-white ring-2 ring-bg md:hidden">
+                      {challengeCount}
+                    </span>
+                  )}
                 </button>
 
                 {menuOpen && (
@@ -142,7 +154,7 @@ export default function Navbar() {
                       <MenuItem href="/casino" icon={<Dice5 size={16} />} onClick={() => setMenuOpen(false)}>
                         Casino
                       </MenuItem>
-                      <MenuItem href="/arena" icon={<Swords size={16} />} onClick={() => setMenuOpen(false)}>
+                      <MenuItem href="/arena" icon={<Swords size={16} />} onClick={() => setMenuOpen(false)} badge={challengeCount}>
                         Arena
                       </MenuItem>
                       <MenuItem href="/leaderboard" icon={<Trophy size={16} />} onClick={() => setMenuOpen(false)}>
@@ -194,11 +206,13 @@ function MenuItem({
   icon,
   children,
   onClick,
+  badge,
 }: {
   href: string;
   icon: React.ReactNode;
   children: React.ReactNode;
   onClick?: () => void;
+  badge?: number;
 }) {
   return (
     <Link
@@ -207,7 +221,12 @@ function MenuItem({
       className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink hover:bg-bg-hover"
     >
       {icon}
-      {children}
+      <span className="flex-1">{children}</span>
+      {!!badge && badge > 0 && (
+        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-no px-1 text-[10px] font-bold text-white">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
