@@ -26,19 +26,31 @@ const SEGMENTS: Segment[] = [
 const N = SEGMENTS.length;
 const SLICE = 360 / N;
 
-function nextMidnightUTC(): number {
+const SYDNEY_TZ = "Australia/Sydney";
+
+// Returns "YYYY-MM-DD" in Sydney local time.
+function sydneyDateStr(d: Date): string {
+  return d.toLocaleDateString("en-CA", { timeZone: SYDNEY_TZ });
+}
+
+// Returns the UTC ms timestamp of the next midnight in Sydney time.
+function nextMidnightSydney(): number {
   const now = new Date();
-  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+  const today = sydneyDateStr(now);
+  // Bisect between now and now+27h to find the exact UTC instant when Sydney
+  // date flips from today to tomorrow (handles AEST/AEDT DST automatically).
+  let lo = now.getTime();
+  let hi = lo + 27 * 3600 * 1000;
+  while (hi - lo > 1000) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (sydneyDateStr(new Date(mid)) === today) lo = mid;
+    else hi = mid;
+  }
+  return hi;
 }
 
 function alreadySpunToday(lastSpinAt: string): boolean {
-  const spun = new Date(lastSpinAt);
-  const now = new Date();
-  return (
-    spun.getUTCFullYear() === now.getUTCFullYear() &&
-    spun.getUTCMonth() === now.getUTCMonth() &&
-    spun.getUTCDate() === now.getUTCDate()
-  );
+  return sydneyDateStr(new Date(lastSpinAt)) === sydneyDateStr(new Date());
 }
 
 function slicePath(i: number, r = 92, cx = 100, cy = 100) {
@@ -180,7 +192,7 @@ export default function SpinWheel() {
 
       {onCooldown ? (
         <div className="relative text-center text-sm text-ink-faint">
-          Next spin available in <Countdown to={nextMidnightUTC()} />
+          Next spin available in <Countdown to={nextMidnightSydney()} />
         </div>
       ) : (
         <button

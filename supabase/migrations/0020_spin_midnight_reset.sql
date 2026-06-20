@@ -2,8 +2,8 @@
 -- EBHS Polymarket — migration 0020
 --
 -- Change daily spin cooldown from "24 hours since last spin" to
--- "once per calendar day (UTC midnight reset)".
--- Users can spin again as soon as midnight UTC ticks over.
+-- "once per calendar day (Sydney AEST/AEDT midnight reset)".
+-- Users can spin again as soon as midnight Sydney time ticks over.
 --
 -- Run in the Supabase SQL editor on top of 0001–0019. Re-runnable.
 -- ============================================================================
@@ -25,8 +25,8 @@ begin
 
   select last_spin_at into v_last from public.profiles where id = v_uid for update;
 
-  -- Block if they already spun today (UTC calendar day).
-  if v_last is not null and v_last::date >= (now() at time zone 'utc')::date then
+  -- Block if they already spun today (Sydney AEST/AEDT calendar day).
+  if v_last is not null and (v_last at time zone 'Australia/Sydney')::date >= (now() at time zone 'Australia/Sydney')::date then
     raise exception 'You already spun today. Come back at midnight!';
   end if;
 
