@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Clock, Instagram, Loader2, UserX, X } from "lucide-react";
+import { Check, Clock, Instagram, Loader2, Trash2, UserX, X } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
 import { fetchAllProfiles, fetchProfilesPrivate } from "@/lib/queries";
 import type { Profile, ProfilePrivate } from "@/lib/types";
@@ -13,6 +13,9 @@ import Avatar from "@/components/Avatar";
 // SECURITY DEFINER RPCs (admin_approve_user / admin_decline_user).
 export default function AccountApprovals() {
   const queryClient = useQueryClient();
+  const supabase = getSupabase();
+  const [bulkBusy, setBulkBusy] = useState<"decline" | "delete" | null>(null);
+  const [bulkErr, setBulkErr] = useState<string | null>(null);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["all-profiles"],
@@ -26,6 +29,29 @@ export default function AccountApprovals() {
   const pending = users.filter((u) => u.approval_status === "pending");
   const declined = users.filter((u) => u.approval_status === "declined");
 
+  async function runBulk(action: "decline" | "delete") {
+    const fn = action === "decline" ? "admin_decline_all_pending" : "admin_delete_all_declined";
+    const ok =
+      action === "decline"
+        ? confirm(
+            `Decline all ${pending.length} pending request(s)? They'll be locked out — you can still approve them later.`
+          )
+        : confirm(
+            `Permanently delete all ${declined.length} declined account(s)? This cannot be undone.`
+          );
+    if (!ok) return;
+    setBulkBusy(action);
+    setBulkErr(null);
+    const { error } = await supabase.rpc(fn);
+    setBulkBusy(null);
+    if (error) {
+      setBulkErr(error.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["all-profiles"] });
+    queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+  }
+
   if (isLoading) {
     return <div className="card py-10 text-center text-sm text-ink-faint">Loading requests…</div>;
   }
@@ -37,11 +63,27 @@ export default function AccountApprovals() {
         their username and password; declining keeps them locked out.
       </div>
 
+      {bulkErr && (
+        <div className="rounded-xl border border-no/30 bg-no/10 px-3 py-2 text-sm text-no-text">{bulkErr}</div>
+      )}
+
       <Section
         title="Pending requests"
         icon={<Clock size={15} className="text-yellow-300" />}
         count={pending.length}
         empty="No accounts waiting for approval. 🎉"
+        action={
+          pending.length > 0 && (
+            <button
+              onClick={() => runBulk("decline")}
+              disabled={!!bulkBusy}
+              className="btn border border-no/40 bg-no/10 px-3 py-1.5 text-xs text-no-text hover:bg-no/25"
+            >
+              {bulkBusy === "decline" ? <Loader2 size={13} className="animate-spin" /> : <X size={13} />}
+              Decline all
+            </button>
+          )
+        }
       >
         {pending.map((u) => (
           <ApprovalRow key={u.id} user={u} priv={privateMap[u.id]} queryClient={queryClient} />
@@ -54,6 +96,16 @@ export default function AccountApprovals() {
           icon={<UserX size={15} className="text-no-text" />}
           count={declined.length}
           empty=""
+          action={
+            <button
+              onClick={() => runBulk("delete")}
+              disabled={!!bulkBusy}
+              className="btn border border-no/40 bg-no/10 px-3 py-1.5 text-xs text-no-text hover:bg-no/25"
+            >
+              {bulkBusy === "delete" ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+              Delete all
+            </button>
+          }
         >
           {declined.map((u) => (
             <ApprovalRow
@@ -75,12 +127,14 @@ function Section({
   icon,
   count,
   empty,
+  action,
   children,
 }: {
   title: string;
   icon: React.ReactNode;
   count: number;
   empty: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -91,6 +145,7 @@ function Section({
         <span className="rounded-full bg-bg-hover px-2 py-0.5 text-xs font-medium text-ink-dim">
           {count}
         </span>
+        {action && <div className="ml-auto">{action}</div>}
       </div>
       {count === 0 ? (
         <div className="card py-8 text-center text-sm text-ink-faint">{empty}</div>
