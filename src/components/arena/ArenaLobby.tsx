@@ -4,29 +4,32 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Coins, Crown, Loader2, Layers, Plus, Swords, X } from "lucide-react";
+import { Coins, Crown, Layers, Loader2, Plus, Swords, Users, X } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
+import { useOnlineUsers } from "@/components/PresenceProvider";
 import {
   fetchArenaPlayers,
   fetchMyChallenges,
   fetchMyMatches,
   fetchUnoOpenTables,
 } from "@/lib/arena/queries";
-import { useArenaPresence } from "@/lib/arena/realtime";
 import { formatMoney } from "@/lib/format";
 import { FadeIn } from "@/components/motion";
 import Avatar from "@/components/Avatar";
-import type { ArenaChallenge, UnoOpenTable } from "@/lib/arena/types";
+import type { ArenaChallenge, ArenaMatch, UnoOpenTable } from "@/lib/arena/types";
 import clsx from "clsx";
+
+type Tab = "players" | "chess" | "uno";
 
 export default function ArenaLobby() {
   const { user, profile, loading, refreshProfile } = useAuth();
   const supabase = getSupabase();
   const qc = useQueryClient();
   const router = useRouter();
-  const online = useArenaPresence();
+  const online = useOnlineUsers();
 
+  const [tab, setTab] = useState<Tab>("players");
   const [target, setTarget] = useState<{ id: string; username: string } | null>(null);
   const [stake, setStake] = useState(50);
   const [busy, setBusy] = useState(false);
@@ -69,10 +72,9 @@ export default function ArenaLobby() {
     return (id: string) => m.get(id) ?? "player";
   }, [players]);
 
-  // Realtime invalidation only (fast path). Keyed on uid so the channel isn't
-  // torn down whenever the session refreshes — that churn used to drop the
-  // "your challenge was accepted" event. Navigation is handled separately below
-  // off the matches query, so it works even if realtime misses an event.
+  // Realtime invalidation (fast path). Keyed on uid so the channel isn't torn
+  // down on every session refresh (that churn used to drop accepted-challenge
+  // events). Navigation below is driven off the matches query as a backstop.
   const uid = user?.id;
   useEffect(() => {
     if (!uid) return;
@@ -113,11 +115,15 @@ export default function ArenaLobby() {
     }
   }, [matches, matchesLoaded, uid, router, refreshProfile]);
 
+  // ----- derived buckets ------------------------------------------------------
   const incoming = challenges.filter((c) => c.opponent_id === user?.id);
   const outgoing = challenges.filter((c) => c.challenger_id === user?.id);
-  const activeMatches = matches.filter((m) => m.status === "active");
-  const myUnoLobbies = matches.filter((m) => m.game === "uno" && m.status === "lobby");
-  const pastMatches = matches.filter((m) => m.status !== "active" && m.status !== "lobby").slice(0, 8);
+  const chessActive = matches.filter((m) => m.game === "chess" && m.status === "active");
+  const chessPast = matches.filter((m) => m.game === "chess" && m.status !== "active" && m.status !== "lobby").slice(0, 8);
+  const unoActive = matches.filter((m) => m.game === "uno" && m.status === "active");
+  const unoLobbies = matches.filter((m) => m.game === "uno" && m.status === "lobby");
+  const unoPast = matches.filter((m) => m.game === "uno" && m.status !== "active" && m.status !== "lobby").slice(0, 8);
+  const joinableTables = unoTables.filter((t) => !matches.some((m) => m.id === t.match_id));
 
   const others = useMemo(() => {
     return players
@@ -129,7 +135,9 @@ export default function ArenaLobby() {
         return a.username.localeCompare(b.username);
       });
   }, [players, user?.id, online]);
+  const onlineCount = others.filter((p) => online.has(p.id)).length;
 
+  // ----- actions --------------------------------------------------------------
   async function send() {
     if (!target) return;
     if (stake <= 0) {
@@ -155,6 +163,7 @@ export default function ArenaLobby() {
     refreshProfile();
     qc.invalidateQueries({ queryKey: ["arena-challenges"] });
     setTarget(null);
+    setTab("chess");
   }
 
   async function respond(c: ArenaChallenge, accept: boolean) {
@@ -241,7 +250,7 @@ export default function ArenaLobby() {
   if (loading || !profile) return <div className="py-20 text-center text-ink-faint">Loading…</div>;
 
   return (
-    <FadeIn className="mx-auto flex max-w-5xl flex-col gap-6">
+    <FadeIn className="mx-auto flex max-w-5xl flex-col gap-5">
       <section className="relative overflow-hidden rounded-3xl border border-white/10 p-7 sm:p-9">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60rem_30rem_at_10%_-20%,rgba(99,102,241,0.20),transparent_60%)]" />
         <div className="relative">
@@ -256,88 +265,159 @@ export default function ArenaLobby() {
         </div>
       </section>
 
-      {/* Incoming / outgoing challenges */}
-      {(incoming.length > 0 || outgoing.length > 0) && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {incoming.map((c) => (
-            <div key={c.id} className="card flex items-center gap-3 p-4">
-              <Avatar name={nameOf(c.challenger_id)} size={36} />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold">@{nameOf(c.challenger_id)}</div>
-                <div className="text-xs text-ink-faint">challenges you · {formatMoney(c.stake)} chess</div>
-              </div>
-              <button onClick={() => respond(c, true)} disabled={busy} className="btn btn-primary px-3 py-1.5 text-xs">
-                Accept
-              </button>
-              <button onClick={() => respond(c, false)} disabled={busy} className="btn btn-ghost px-3 py-1.5 text-xs">
-                Decline
-              </button>
-            </div>
-          ))}
-          {outgoing.map((c) => (
-            <div key={c.id} className="card flex items-center gap-3 p-4">
-              <Avatar name={nameOf(c.opponent_id)} size={36} />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold">@{nameOf(c.opponent_id)}</div>
-                <div className="text-xs text-ink-faint">waiting · {formatMoney(c.stake)} staked</div>
-              </div>
-              <button onClick={() => cancel(c)} disabled={busy} className="btn btn-ghost px-3 py-1.5 text-xs">
-                Cancel
-              </button>
-            </div>
-          ))}
+      {/* Panel tabs */}
+      <div className="flex gap-2">
+        <TabButton active={tab === "players"} onClick={() => setTab("players")} icon={<Users size={15} />} label="Players" badge={onlineCount} badgeTone="online" />
+        <TabButton active={tab === "chess"} onClick={() => setTab("chess")} icon={<Swords size={15} />} label="Chess" badge={incoming.length} badgeTone="alert" />
+        <TabButton active={tab === "uno"} onClick={() => setTab("uno")} icon={<Layers size={15} />} label="Uno" badge={joinableTables.length} badgeTone="neutral" />
+      </div>
+
+      {/* -------- Players panel -------- */}
+      {tab === "players" && (
+        <div className="flex flex-col gap-2">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-ink-dim">
+            Players <span className="text-ink-faint">· {onlineCount} online now</span>
+          </h2>
+          <div className="card divide-y divide-border p-0">
+            {others.length === 0 && <div className="px-4 py-8 text-center text-sm text-ink-faint">No other players yet.</div>}
+            {others.map((p) => {
+              const isOnline = online.has(p.id);
+              return (
+                <div key={p.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <div className="relative">
+                    <Avatar name={p.username} size={34} />
+                    <span
+                      className={clsx(
+                        "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-bg-card",
+                        isOnline ? "bg-emerald-400" : "bg-zinc-600"
+                      )}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">@{p.username}</div>
+                    <div className="text-xs text-ink-faint">{isOnline ? "online now" : "offline"}</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setErr(null);
+                      setTarget({ id: p.id, username: p.username });
+                    }}
+                    className="btn btn-ghost px-3 py-1.5 text-xs"
+                  >
+                    <Swords size={14} /> Challenge
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <p className="px-1 text-xs text-ink-faint">
+            A green dot means they&apos;re on the site right now — anywhere, not just the arena.
+          </p>
         </div>
       )}
 
-      {/* Active matches */}
-      {activeMatches.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-ink-dim">Your matches</h2>
+      {/* -------- Chess panel -------- */}
+      {tab === "chess" && (
+        <div className="flex flex-col gap-5">
+          {incoming.length === 0 && outgoing.length === 0 && chessActive.length === 0 && chessPast.length === 0 ? (
+            <EmptyPanel
+              icon={<Swords size={20} className="text-brand-light" />}
+              title="No chess games yet"
+              hint="Head to the Players tab and challenge someone to get started."
+              action={
+                <button onClick={() => setTab("players")} className="btn btn-primary px-4 py-2 text-sm">
+                  <Users size={15} /> Find a player
+                </button>
+              }
+            />
+          ) : (
+            <>
+              {(incoming.length > 0 || outgoing.length > 0) && (
+                <div className="flex flex-col gap-2">
+                  <h2 className="text-sm font-bold uppercase tracking-wide text-ink-dim">Challenges</h2>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {incoming.map((c) => (
+                      <div key={c.id} className="card flex items-center gap-3 p-4">
+                        <Avatar name={nameOf(c.challenger_id)} size={36} />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold">@{nameOf(c.challenger_id)}</div>
+                          <div className="text-xs text-ink-faint">challenges you · {formatMoney(c.stake)} chess</div>
+                        </div>
+                        <button onClick={() => respond(c, true)} disabled={busy} className="btn btn-primary px-3 py-1.5 text-xs">
+                          Accept
+                        </button>
+                        <button onClick={() => respond(c, false)} disabled={busy} className="btn btn-ghost px-3 py-1.5 text-xs">
+                          Decline
+                        </button>
+                      </div>
+                    ))}
+                    {outgoing.map((c) => (
+                      <div key={c.id} className="card flex items-center gap-3 p-4">
+                        <Avatar name={nameOf(c.opponent_id)} size={36} />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold">@{nameOf(c.opponent_id)}</div>
+                          <div className="text-xs text-ink-faint">waiting · {formatMoney(c.stake)} staked</div>
+                        </div>
+                        <button onClick={() => cancel(c)} disabled={busy} className="btn btn-ghost px-3 py-1.5 text-xs">
+                          Cancel
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {chessActive.length > 0 && <MatchList title="Your games" matches={chessActive} />}
+              {chessPast.length > 0 && <ResultsList title="Recent chess results" matches={chessPast} userId={user?.id} />}
+
+              <button onClick={() => setTab("players")} className="btn btn-ghost self-start text-sm">
+                <Users size={15} /> Challenge another player
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* -------- Uno panel -------- */}
+      {tab === "uno" && (
+        <div className="flex flex-col gap-5">
+          <div className="flex items-center justify-between">
+            <h2 className="flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide text-ink-dim">
+              <Layers size={15} className="text-brand-light" /> Uno tables
+            </h2>
+            <button
+              onClick={() => {
+                setErr(null);
+                setUnoModal(true);
+              }}
+              className="btn btn-primary px-3 py-1.5 text-xs"
+            >
+              <Plus size={14} /> Create table
+            </button>
+          </div>
+
           <div className="grid gap-2 sm:grid-cols-2">
-            {activeMatches.map((m) => (
+            {unoLobbies.map((m) => (
               <Link key={m.id} href={`/arena/${m.id}`} className="card flex items-center gap-3 p-4 hover:border-border-soft">
-                <Swords size={18} className="text-brand-light" />
+                <Layers size={18} className="text-brand-light" />
                 <div className="flex-1">
-                  <div className="text-sm font-semibold capitalize">{m.game} match</div>
+                  <div className="text-sm font-semibold">Your table</div>
+                  <div className="text-xs text-ink-faint">{formatMoney(m.stake)} each · waiting to start</div>
+                </div>
+                <span className="text-xs font-semibold text-brand-light">Open →</span>
+              </Link>
+            ))}
+            {unoActive.map((m) => (
+              <Link key={m.id} href={`/arena/${m.id}`} className="card flex items-center gap-3 p-4 hover:border-border-soft">
+                <Layers size={18} className="text-brand-light" />
+                <div className="flex-1">
+                  <div className="text-sm font-semibold">Your game</div>
                   <div className="text-xs text-ink-faint">{formatMoney(m.pot)} pot · in progress</div>
                 </div>
                 <span className="text-xs font-semibold text-brand-light">Resume →</span>
               </Link>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Uno tables */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide text-ink-dim">
-            <Layers size={15} className="text-brand-light" /> Uno tables
-          </h2>
-          <button
-            onClick={() => {
-              setErr(null);
-              setUnoModal(true);
-            }}
-            className="btn btn-ghost px-3 py-1.5 text-xs"
-          >
-            <Plus size={14} /> Create table
-          </button>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {myUnoLobbies.map((m) => (
-            <Link key={m.id} href={`/arena/${m.id}`} className="card flex items-center gap-3 p-4 hover:border-border-soft">
-              <Layers size={18} className="text-brand-light" />
-              <div className="flex-1">
-                <div className="text-sm font-semibold">Your table</div>
-                <div className="text-xs text-ink-faint">{formatMoney(m.stake)} each · waiting to start</div>
-              </div>
-              <span className="text-xs font-semibold text-brand-light">Open →</span>
-            </Link>
-          ))}
-          {unoTables
-            .filter((t) => !myUnoLobbies.some((m) => m.id === t.match_id))
-            .map((t) => {
+            {joinableTables.map((t) => {
               const full = t.joined >= t.max_players;
               return (
                 <div key={t.match_id} className="card flex items-center gap-3 p-4">
@@ -348,88 +428,20 @@ export default function ArenaLobby() {
                       {formatMoney(t.stake)} each · {t.joined}/{t.max_players} joined
                     </div>
                   </div>
-                  <button
-                    onClick={() => joinUno(t)}
-                    disabled={busy || full}
-                    className="btn btn-primary px-3 py-1.5 text-xs disabled:opacity-50"
-                  >
+                  <button onClick={() => joinUno(t)} disabled={busy || full} className="btn btn-primary px-3 py-1.5 text-xs disabled:opacity-50">
                     {full ? "Full" : "Join"}
                   </button>
                 </div>
               );
             })}
-          {myUnoLobbies.length === 0 && unoTables.length === 0 && (
-            <div className="card px-4 py-6 text-center text-sm text-ink-faint sm:col-span-2">
-              No open Uno tables. Create one and invite the lobby — up to 8 players, winner takes the pot.
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Players */}
-      <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-ink-dim">
-          Players <span className="text-ink-faint">· {online.size} online</span>
-        </h2>
-        <div className="card divide-y divide-border p-0">
-          {others.length === 0 && <div className="px-4 py-8 text-center text-sm text-ink-faint">No other players yet.</div>}
-          {others.map((p) => {
-            const isOnline = online.has(p.id);
-            return (
-              <div key={p.id} className="flex items-center gap-3 px-4 py-2.5">
-                <div className="relative">
-                  <Avatar name={p.username} size={34} />
-                  <span
-                    className={clsx(
-                      "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-bg-card",
-                      isOnline ? "bg-emerald-400" : "bg-zinc-600"
-                    )}
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold">@{p.username}</div>
-                  <div className="text-xs text-ink-faint">{isOnline ? "online now" : "offline"}</div>
-                </div>
-                <button
-                  onClick={() => {
-                    setErr(null);
-                    setTarget({ id: p.id, username: p.username });
-                  }}
-                  className="btn btn-ghost px-3 py-1.5 text-xs"
-                >
-                  <Swords size={14} /> Challenge
-                </button>
+            {unoLobbies.length === 0 && unoActive.length === 0 && joinableTables.length === 0 && (
+              <div className="card px-4 py-8 text-center text-sm text-ink-faint sm:col-span-2">
+                No open Uno tables. Create one — up to 8 players, winner takes the pot.
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Past matches */}
-      {pastMatches.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-ink-dim">Recent results</h2>
-          <div className="card divide-y divide-border p-0">
-            {pastMatches.map((m) => {
-              const won = m.winner_id === user?.id;
-              const label = m.status === "void" ? "Voided" : m.result === "draw" ? "Draw" : won ? "Won" : "Lost";
-              return (
-                <div key={m.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
-                  <Crown size={16} className={won ? "text-yellow-300" : "text-ink-faint"} />
-                  <span className="flex-1 capitalize">{m.game}</span>
-                  <span className="text-xs text-ink-faint">{formatMoney(m.pot)} pot</span>
-                  <span
-                    className={clsx(
-                      "rounded-full px-2 py-0.5 text-xs font-semibold",
-                      won ? "bg-yes/15 text-yes-text" : m.result === "draw" || m.status === "void" ? "bg-bg-soft text-ink-dim" : "bg-no/15 text-no-text"
-                    )}
-                  >
-                    {label}
-                  </span>
-                </div>
-              );
-            })}
+            )}
           </div>
+
+          {unoPast.length > 0 && <ResultsList title="Recent Uno results" matches={unoPast} userId={user?.id} />}
         </div>
       )}
 
@@ -439,12 +451,12 @@ export default function ArenaLobby() {
           <div className="flex items-center gap-3">
             <Avatar name={target.username} size={40} />
             <div>
-              <div className="text-sm text-ink-dim">Challenge</div>
+              <div className="text-sm text-ink-dim">Challenge to chess</div>
               <div className="text-lg font-bold">@{target.username}</div>
             </div>
           </div>
           <div className="mt-4 flex flex-col gap-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Your stake (chess)</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Your stake</label>
             <div className="relative">
               <Coins size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-yellow-300" />
               <input
@@ -493,11 +505,7 @@ export default function ArenaLobby() {
             <label className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Max players</label>
             <div className="flex gap-2">
               {[2, 4, 6, 8].map((n) => (
-                <button
-                  key={n}
-                  onClick={() => setUnoMax(n)}
-                  className={clsx("btn flex-1", unoMax === n ? "btn-primary" : "btn-ghost")}
-                >
+                <button key={n} onClick={() => setUnoMax(n)} className={clsx("btn flex-1", unoMax === n ? "btn-primary" : "btn-ghost")}>
                   {n}
                 </button>
               ))}
@@ -524,7 +532,7 @@ export default function ArenaLobby() {
             </div>
             <h3 className="text-lg font-bold">Not enough cash</h3>
             <p className="mt-1 text-sm text-ink-dim">
-              You need {formatMoney(insufficient)} to stake this match, but you only have {formatMoney(profile.balance)}.
+              You need {formatMoney(insufficient)} to stake this, but you only have {formatMoney(profile.balance)}.
             </p>
             <button onClick={() => setInsufficient(null)} className="btn btn-primary mt-4 w-full py-2.5">
               Got it
@@ -533,6 +541,119 @@ export default function ArenaLobby() {
         </Modal>
       )}
     </FadeIn>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  icon,
+  label,
+  badge,
+  badgeTone,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  badge?: number;
+  badgeTone: "online" | "alert" | "neutral";
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={clsx(
+        "flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors",
+        active ? "border-brand/40 bg-brand/15 text-ink" : "border-border bg-bg-soft/40 text-ink-dim hover:text-ink"
+      )}
+    >
+      {icon}
+      {label}
+      {!!badge && badge > 0 && (
+        <span
+          className={clsx(
+            "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold",
+            badgeTone === "online" && "bg-emerald-500/20 text-emerald-300",
+            badgeTone === "alert" && "bg-no text-white",
+            badgeTone === "neutral" && "bg-bg-hover text-ink-dim"
+          )}
+        >
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function MatchList({ title, matches }: { title: string; matches: ArenaMatch[] }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h2 className="text-sm font-bold uppercase tracking-wide text-ink-dim">{title}</h2>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {matches.map((m) => (
+          <Link key={m.id} href={`/arena/${m.id}`} className="card flex items-center gap-3 p-4 hover:border-border-soft">
+            <Swords size={18} className="text-brand-light" />
+            <div className="flex-1">
+              <div className="text-sm font-semibold capitalize">{m.game} match</div>
+              <div className="text-xs text-ink-faint">{formatMoney(m.pot)} pot · in progress</div>
+            </div>
+            <span className="text-xs font-semibold text-brand-light">Resume →</span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ResultsList({ title, matches, userId }: { title: string; matches: ArenaMatch[]; userId?: string }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h2 className="text-sm font-bold uppercase tracking-wide text-ink-dim">{title}</h2>
+      <div className="card divide-y divide-border p-0">
+        {matches.map((m) => {
+          const won = m.winner_id === userId;
+          const label = m.status === "void" ? "Voided" : m.result === "draw" ? "Draw" : won ? "Won" : "Lost";
+          return (
+            <div key={m.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+              <Crown size={16} className={won ? "text-yellow-300" : "text-ink-faint"} />
+              <span className="flex-1 capitalize">{m.game}</span>
+              <span className="text-xs text-ink-faint">{formatMoney(m.pot)} pot</span>
+              <span
+                className={clsx(
+                  "rounded-full px-2 py-0.5 text-xs font-semibold",
+                  won ? "bg-yes/15 text-yes-text" : m.result === "draw" || m.status === "void" ? "bg-bg-soft text-ink-dim" : "bg-no/15 text-no-text"
+                )}
+              >
+                {label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function EmptyPanel({
+  icon,
+  title,
+  hint,
+  action,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  hint: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="card flex flex-col items-center gap-3 px-4 py-12 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10">{icon}</div>
+      <div>
+        <div className="font-semibold">{title}</div>
+        <div className="mt-1 text-sm text-ink-faint">{hint}</div>
+      </div>
+      {action}
+    </div>
   );
 }
 
