@@ -22,7 +22,23 @@ function friendlyError(e: unknown): string {
     return "Please log in to play.";
   }
   if (m.includes("insufficient")) return "Not enough balance for that bet.";
+  if (isNetworkError(msg)) {
+    return "Network hiccup — couldn't reach the server. Your balance has been refreshed; check it before betting again.";
+  }
   return msg;
+}
+
+// A browser-level fetch failure (request never completed) rather than a server
+// rejection. These are transient connectivity blips, not game errors.
+function isNetworkError(msg: string): boolean {
+  const m = msg.toLowerCase();
+  return (
+    m.includes("failed to fetch") ||
+    m.includes("networkerror") ||
+    m.includes("network request failed") ||
+    m.includes("load failed") ||
+    m.includes("fetch failed")
+  );
 }
 
 // Calls a casino RPC, then refreshes the player's balance + history. Every
@@ -68,6 +84,13 @@ export function useCasino() {
       } catch (e) {
         const msg = friendlyError(e);
         if (msg) setError(msg);
+        // On a network failure we can't tell whether the bet reached the server,
+        // so reconcile the real balance + history instead of leaving stale state.
+        const raw = e instanceof Error ? e.message : String(e ?? "");
+        if (isNetworkError(raw)) {
+          refreshProfile();
+          if (user) qc.invalidateQueries({ queryKey: ["casino-history", user.id] });
+        }
         throw e;
       } finally {
         if (!concurrent) {

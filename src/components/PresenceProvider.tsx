@@ -10,7 +10,12 @@ import { useAuth } from "./AuthProvider";
 // arena page". arena_heartbeat() (migration 0021) stamps last_seen AND returns
 // everyone seen in the last 30s in one atomic round-trip. The returned set is
 // shared via context so the arena's online panel reads it without beating again.
-const BEAT_MS = 7000;
+//
+// Kept deliberately light: a 15s interval (the server's online window is 30s, so
+// there's comfortable margin) and we skip beating while the tab is hidden. This
+// runs for every signed-in user on every page, so trimming the request volume
+// matters — too-frequent polling was contributing to "Failed to fetch" blips.
+const BEAT_MS = 15000;
 
 const PresenceContext = createContext<Set<string>>(new Set());
 
@@ -32,6 +37,8 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
     let active = true;
 
     const beat = async () => {
+      // Don't poll for a backgrounded tab — it just wastes requests.
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       const { data, error } = await supabase.rpc("arena_heartbeat");
       if (error) {
         console.error("[presence] heartbeat failed:", error.message);
@@ -42,13 +49,17 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
 
     beat();
     const timer = setInterval(beat, BEAT_MS);
-    // Beat again the moment the tab refocuses so presence recovers instantly.
-    const onFocus = () => beat();
-    window.addEventListener("focus", onFocus);
+    // Beat immediately when the tab becomes visible again so presence recovers fast.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") beat();
+    };
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       active = false;
       clearInterval(timer);
-      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [uid]);
 
