@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Lock, PartyPopper, RotateCw, Volume2 } from "lucide-react";
+import { Loader2, Lock, PartyPopper, RotateCw } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
 import { useAuth } from "./AuthProvider";
 import { formatMoney } from "@/lib/format";
@@ -63,7 +63,6 @@ export default function ReflectionGate() {
   const startedRef = useRef(false);
   const lockStartRef = useRef<number | null>(null); // client-time estimate of lock start
   const [progress, setProgress] = useState(0);
-  const [muted, setMuted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [claiming, setClaiming] = useState(false);
@@ -92,23 +91,33 @@ export default function ReflectionGate() {
     if (!locked) lockStartRef.current = null;
   }, [locked, data]);
 
+  // Always play with sound — never muted, no mute control. If the browser
+  // blocks sound-on autoplay, start it (still unmuted) on the user's very next
+  // interaction, which happens almost immediately since the overlay is in their
+  // way. No visible button; the video is simply never muted.
   function tryPlay() {
     const v = vidRef.current;
     if (!v || startedRef.current) return;
     v.muted = false;
+    v.volume = 1;
     v.play()
       .then(() => {
         startedRef.current = true;
       })
       .catch(() => {
-        // Autoplay-with-sound blocked → play muted (always allowed) + offer unmute.
-        v.muted = true;
-        setMuted(true);
-        v.play()
-          .then(() => {
-            startedRef.current = true;
-          })
-          .catch(() => {});
+        const resume = () => {
+          const vv = vidRef.current;
+          if (!vv || startedRef.current) return;
+          vv.muted = false;
+          vv.volume = 1;
+          vv.play()
+            .then(() => {
+              startedRef.current = true;
+            })
+            .catch(() => {});
+        };
+        window.addEventListener("pointerdown", resume, { once: true });
+        window.addEventListener("keydown", resume, { once: true });
       });
   }
 
@@ -155,13 +164,6 @@ export default function ReflectionGate() {
   function onPause() {
     const v = vidRef.current;
     if (v && startedRef.current && !v.ended && !rewarded) v.play().catch(() => {});
-  }
-  function unmute() {
-    const v = vidRef.current;
-    if (!v) return;
-    v.muted = false;
-    setMuted(false);
-    v.play().catch(() => {});
   }
   function retryLoad() {
     const v = vidRef.current;
@@ -292,14 +294,6 @@ export default function ReflectionGate() {
                     You can still claim your reward below once the timer is up.
                   </p>
                 </div>
-              )}
-              {muted && !loadError && (
-                <button
-                  onClick={unmute}
-                  className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/30"
-                >
-                  <Volume2 size={14} /> Tap for sound
-                </button>
               )}
             </div>
 
