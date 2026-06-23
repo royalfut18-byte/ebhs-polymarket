@@ -12,7 +12,7 @@ import { celebrate } from "@/lib/casino/celebrate";
 import { formatMoney } from "@/lib/format";
 import { FadeIn } from "@/components/motion";
 import { simulate } from "@/lib/arena/pool/physics";
-import { resolveShot } from "@/lib/arena/pool/rules";
+import { groupOf, resolveShot } from "@/lib/arena/pool/rules";
 import PoolTable from "./PoolTable";
 import MatchChat from "./MatchChat";
 import type { PoolGroup, PoolState } from "@/lib/arena/types";
@@ -51,7 +51,20 @@ export default function PoolMatch({ matchId }: { matchId: string }) {
   const me = players.find((p) => p.user_id === user?.id);
   const mySeat = me?.seat ?? 0;
   const opp = players.find((p) => p.user_id !== user?.id);
-  const state = (match?.state ?? null) as PoolState | null;
+
+  // Stale-poll guard: after I shoot we hold an optimistic state until the server
+  // confirms it. A periodic refetch that lands before the RPC commits returns the
+  // PRE-shot state (older lastShot.at) — ignore it so the cue/balls don't snap
+  // backward then forward. Cleared once the server catches up or moves past us.
+  const optimisticRef = useRef<{ at: string; state: PoolState } | null>(null);
+  const rawState = (match?.state ?? null) as PoolState | null;
+  let state = rawState;
+  if (rawState && optimisticRef.current) {
+    const sAt = rawState.lastShot?.at;
+    if (sAt && sAt >= optimisticRef.current.at) optimisticRef.current = null;
+    else state = optimisticRef.current.state;
+  }
+
   const seatUser = useMemo(() => {
     const m = new Map<number, string>();
     for (const p of players) m.set(p.seat, p.user_id);
@@ -78,7 +91,8 @@ export default function PoolMatch({ matchId }: { matchId: string }) {
   function handleShoot(after: PoolState, winnerSeat: number | null) {
     if (!match || !user) return;
     const winnerId = winnerSeat != null ? seatUser.get(winnerSeat) ?? null : null;
-    // optimistic
+    // optimistic + stale-poll guard
+    optimisticRef.current = { at: after.lastShot!.at, state: after };
     qc.setQueryData(["arena-match", matchId], (old: typeof match | undefined) =>
       old ? { ...old, state: after } : old
     );
@@ -171,12 +185,20 @@ export default function PoolMatch({ matchId }: { matchId: string }) {
           <PlayerBar
             name={opp?.profiles?.username ?? "Opponent"}
             group={state.groups[String(oppSeat)] as PoolGroup | null}
+            potted={pottedFor(state, oppSeat)}
             toMove={match.status === "active" && state.turn === oppSeat && !state.pending}
           />
 
-          <PoolTable state={state} mySeat={mySeat} meId={user!.id} canPlay={myTurn && !busy} onShoot={handleShoot} />
+          <PoolTable
+            state={state}
+            mySeat={mySeat}
+            meId={user!.id}
+            matchId={matchId}
+            canPlay={myTurn && !busy}
+            onShoot={handleShoot}
+          />
 
-          <PlayerBar name={me?.profiles?.username ?? "You"} group={myGroup} toMove={myTurn} you />
+          <PlayerBar name={me?.profiles?.username ?? "You"} group={myGroup} potted={pottedFor(state, mySeat)} toMove={myTurn} you />
 
           <StatusBanner match={match} meId={user?.id} phase={state.phase} />
 
@@ -232,14 +254,63 @@ export default function PoolMatch({ matchId }: { matchId: string }) {
   );
 }
 
+const POOL_BALL_COLORS: Record<number, string> = {
+  1: "#f4c333",
+  2: "#2f6bd6",
+  3: "#d63a2f",
+  4: "#7a3da8",
+  5: "#e07b27",
+  6: "#2f9e57",
+  7: "#7c1f2b",
+};
+function ballHex(i: number): string {
+  return POOL_BALL_COLORS[i <= 7 ? i : i - 8];
+}
+
+// The potted object balls of a seat's group (what they've made so far).
+function pottedFor(state: PoolState, seat: number): number[] {
+  const group = state.groups[String(seat)];
+  if (!group) return [];
+  return state.balls
+    .filter((b) => b.in && groupOf(b.i) === group)
+    .map((b) => b.i)
+    .sort((a, b) => a - b);
+}
+
+function BallChip({ i }: { i: number }) {
+  const stripe = i >= 9;
+  if (stripe) {
+    return (
+      <span
+        className="relative inline-flex h-4 w-4 items-center justify-center overflow-hidden rounded-full bg-[#f5f1e6] text-[7px] font-black text-black ring-1 ring-black/20"
+        title={`Ball ${i}`}
+      >
+        <span className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2" style={{ background: ballHex(i) }} />
+        <span className="relative">{i}</span>
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[7px] font-black text-white ring-1 ring-black/20"
+      style={{ background: ballHex(i) }}
+      title={`Ball ${i}`}
+    >
+      {i}
+    </span>
+  );
+}
+
 function PlayerBar({
   name,
   group,
+  potted,
   toMove,
   you,
 }: {
   name: string;
   group: PoolGroup | null;
+  potted: number[];
   toMove?: boolean;
   you?: boolean;
 }) {
@@ -254,7 +325,14 @@ function PlayerBar({
         {name}
         {you && <span className="text-ink-faint"> (you)</span>}
       </span>
-      <span className="ml-2 text-xs capitalize text-ink-faint">{group ?? "open"}</span>
+      <span className="text-xs capitalize text-ink-faint">{group ?? "open"}</span>
+      {potted.length > 0 && (
+        <span className="flex items-center gap-1">
+          {potted.map((i) => (
+            <BallChip key={i} i={i} />
+          ))}
+        </span>
+      )}
       {toMove && <span className="ml-auto rounded-full bg-brand/20 px-2 py-0.5 text-[10px] font-bold text-brand-light">to shoot</span>}
     </div>
   );
