@@ -18,7 +18,7 @@ interface Status {
   locked: boolean;
   net_worth?: number;
   required?: number;
-  elapsed?: number;
+  watched?: number;
   used?: number;
   max?: number;
 }
@@ -61,7 +61,7 @@ export default function ReflectionGate() {
   const vidRef = useRef<HTMLVideoElement>(null);
   const maxRef = useRef(0); // furthest point watched (blocks forward seeks)
   const startedRef = useRef(false);
-  const lockStartRef = useRef<number | null>(null); // client-time estimate of lock start
+  const pingRef = useRef<() => void>(() => {});
   const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -70,6 +70,8 @@ export default function ReflectionGate() {
   const [closed, setClosed] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+  // Server-tracked ACTUAL watched seconds (only accrues while the video plays).
+  const [watched, setWatched] = useState(0);
 
   const locked = !!data?.locked;
   const used = data?.used ?? 0;
@@ -77,19 +79,23 @@ export default function ReflectionGate() {
   const required = data?.required ?? 205;
   const outOfRehabs = locked && used >= max;
 
-  // 1s ticker for the claim-fallback timer + the midnight countdown.
+  // 1s ticker for the midnight countdown.
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // Re-anchor the lock-start estimate whenever fresh status arrives.
+  // Watch-progress ping every 4s (the callback is refreshed each render below).
   useEffect(() => {
-    if (locked && data && typeof data.elapsed === "number") {
-      lockStartRef.current = Date.now() - data.elapsed * 1000;
-    }
-    if (!locked) lockStartRef.current = null;
-  }, [locked, data]);
+    const t = setInterval(() => pingRef.current(), 4000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Sync watched seconds from server status (monotonic — never goes backwards).
+  useEffect(() => {
+    if (typeof data?.watched === "number") setWatched((w) => Math.max(w, data.watched!));
+    if (!locked) setWatched(0);
+  }, [data?.watched, locked]);
 
   // Always play with sound — never muted, no mute control. If the browser
   // blocks sound-on autoplay, start it (still unmuted) on the user's very next
@@ -131,6 +137,7 @@ export default function ReflectionGate() {
     setErr(null);
     maxRef.current = 0;
     startedRef.current = false;
+    setWatched(0);
     const v = vidRef.current;
     if (v) {
       try {
@@ -146,10 +153,15 @@ export default function ReflectionGate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locked, outOfRehabs]);
 
+  // Watch-progress ping loop (set up once; calls the latest closure via a ref).
+  pingRef.current = () => {
+    void ping();
+  };
+
   if (!uid || (!locked && !rewarded) || closed) return null;
 
-  const elapsedSec = lockStartRef.current ? (now - lockStartRef.current) / 1000 : 0;
-  const canClaim = locked && !outOfRehabs && elapsedSec >= required;
+  // Claim unlocks only once enough ACTUAL watch time has accrued server-side.
+  const canClaim = locked && !outOfRehabs && watched >= required;
 
   function onTimeUpdate() {
     const v = vidRef.current;
@@ -171,6 +183,25 @@ export default function ReflectionGate() {
     setLoadError(false);
     setLoading(true);
     v.load();
+  }
+  // Report watch progress to the server while the video is actually playing
+  // (or while it's errored — counted as real-time so a broken video can't trap
+  // anyone). The server clamps growth to real wall-time, so this can't be sped
+  // up by closing the tab, seeking, or spamming.
+  async function ping() {
+    if (!locked || rewarded || claiming || outOfRehabs) return;
+    const v = vidRef.current;
+    const playing = !!v && !v.paused && !v.ended && startedRef.current;
+    if (!playing && !loadError) return;
+    try {
+      const { data: p } = await supabase.rpc("reflection_ping", {
+        p_position: Math.floor(maxRef.current),
+        p_errored: loadError,
+      });
+      if (p && typeof p.watched === "number") setWatched((w) => Math.max(w, p.watched));
+    } catch {
+      /* transient */
+    }
   }
   async function claim() {
     if (claiming || rewarded) return;
@@ -197,6 +228,7 @@ export default function ReflectionGate() {
   const pct = Math.round(progress * 100);
 
   // Countdown to the Sydney midnight reset (for the out-of-rehabs screen).
+  void now; // re-rendered every second by the ticker so the countdown stays live
   const resetMs = msUntilSydneyMidnight();
   const rh = Math.floor(resetMs / 3600000);
   const rm = Math.floor((resetMs % 3600000) / 60000);
@@ -306,13 +338,22 @@ export default function ReflectionGate() {
                 />
               </div>
               <div className="mt-1.5 flex items-center justify-between text-xs text-ink-faint">
-                <span>{claiming ? "Saving your reward…" : loadError ? "Video unavailable" : "Watching…"}</span>
+                <span>
+                  {claiming
+                    ? "Saving your reward…"
+                    : loadError
+                      ? "Video unavailable — reward unlocks on the timer"
+                      : canClaim
+                        ? "Done — claim your reward below"
+                        : `Reward unlocks in ${Math.max(0, Math.ceil(required - watched))}s of watching`}
+                </span>
                 <span className="tabular-nums">{pct}%</span>
               </div>
             </div>
 
-            {/* claim — auto on `ended`, or manual once the watch timer is up so
-                no one is ever stuck (covers glitches / a failed video load). */}
+            {/* claim — auto on `ended`, or manual once enough has actually been
+                watched (covers glitches / a failed video load). Accrues only
+                while playing, so it can't be skipped by waiting offline. */}
             {canClaim && (
               <button onClick={claim} disabled={claiming} className="btn btn-primary mt-3 w-full py-2.5">
                 {claiming ? <Loader2 size={16} className="animate-spin" /> : <PartyPopper size={16} />}
