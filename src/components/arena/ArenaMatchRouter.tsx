@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchMatch } from "@/lib/arena/queries";
 import ChessMatch from "./ChessMatch";
 import UnoTable from "./UnoTable";
+import PoolMatch from "./PoolMatch";
 
 // Loads the match just to learn its game type, then hands off to the right view.
 export default function ArenaMatchRouter({ matchId }: { matchId: string }) {
@@ -24,5 +25,7 @@ export default function ArenaMatchRouter({ matchId }: { matchId: string }) {
       </div>
     );
 
-  return match.game === "uno" ? <UnoTable matchId={matchId} /> : <ChessMatch matchId={matchId} />;
+  if (match.game === "uno") return <UnoTable matchId={matchId} />;
+  if (match.game === "pool") return <PoolMatch matchId={matchId} />;
+  return <ChessMatch matchId={matchId} />;
 }

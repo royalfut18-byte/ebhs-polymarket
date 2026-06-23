@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Coins, Crown, Layers, Loader2, Plus, Swords, Users, X } from "lucide-react";
+import { Coins, Crown, Layers, Loader2, Plus, Swords, Target, Users, X } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useOnlineUsers } from "@/components/PresenceProvider";
@@ -20,7 +20,8 @@ import Avatar from "@/components/Avatar";
 import type { ArenaChallenge, ArenaMatch, UnoOpenTable } from "@/lib/arena/types";
 import clsx from "clsx";
 
-type Tab = "players" | "chess" | "uno";
+type Tab = "players" | "chess" | "pool" | "uno";
+type DuelGame = "chess" | "pool";
 
 export default function ArenaLobby() {
   const { user, profile, loading, refreshProfile } = useAuth();
@@ -31,6 +32,7 @@ export default function ArenaLobby() {
 
   const [tab, setTab] = useState<Tab>("players");
   const [target, setTarget] = useState<{ id: string; username: string } | null>(null);
+  const [challengeGame, setChallengeGame] = useState<DuelGame>("chess");
   const [stake, setStake] = useState(50);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -118,8 +120,14 @@ export default function ArenaLobby() {
   // ----- derived buckets ------------------------------------------------------
   const incoming = challenges.filter((c) => c.opponent_id === user?.id);
   const outgoing = challenges.filter((c) => c.challenger_id === user?.id);
+  const chessIn = incoming.filter((c) => c.game === "chess");
+  const chessOut = outgoing.filter((c) => c.game === "chess");
+  const poolIn = incoming.filter((c) => c.game === "pool");
+  const poolOut = outgoing.filter((c) => c.game === "pool");
   const chessActive = matches.filter((m) => m.game === "chess" && m.status === "active");
   const chessPast = matches.filter((m) => m.game === "chess" && m.status !== "active" && m.status !== "lobby").slice(0, 8);
+  const poolActive = matches.filter((m) => m.game === "pool" && m.status === "active");
+  const poolPast = matches.filter((m) => m.game === "pool" && m.status !== "active" && m.status !== "lobby").slice(0, 8);
   const unoActive = matches.filter((m) => m.game === "uno" && m.status === "active");
   const unoLobbies = matches.filter((m) => m.game === "uno" && m.status === "lobby");
   const unoPast = matches.filter((m) => m.game === "uno" && m.status !== "active" && m.status !== "lobby").slice(0, 8);
@@ -151,7 +159,7 @@ export default function ArenaLobby() {
     }
     setBusy(true);
     setErr(null);
-    const { error } = await supabase.rpc("arena_challenge", { p_game: "chess", p_opponent: target.id, p_stake: stake });
+    const { error } = await supabase.rpc("arena_challenge", { p_game: challengeGame, p_opponent: target.id, p_stake: stake });
     setBusy(false);
     if (error) {
       if (/insufficient/i.test(error.message)) {
@@ -163,7 +171,7 @@ export default function ArenaLobby() {
     refreshProfile();
     qc.invalidateQueries({ queryKey: ["arena-challenges"] });
     setTarget(null);
-    setTab("chess");
+    setTab(challengeGame);
   }
 
   async function respond(c: ArenaChallenge, accept: boolean) {
@@ -259,16 +267,17 @@ export default function ArenaLobby() {
           </span>
           <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Challenge anyone. Winner takes the pot.</h1>
           <p className="mt-2 max-w-xl text-sm text-ink-dim">
-            Challenge someone to chess, or open an Uno table for up to 8. Stakes are held when a game starts and the
-            winner scoops the whole pot. Play-money only.
+            Challenge someone to chess or pool, or open an Uno table for up to 8. Stakes are held when a game starts and
+            the winner scoops the whole pot. Play-money only.
           </p>
         </div>
       </section>
 
       {/* Panel tabs */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <TabButton active={tab === "players"} onClick={() => setTab("players")} icon={<Users size={15} />} label="Players" badge={onlineCount} badgeTone="online" />
-        <TabButton active={tab === "chess"} onClick={() => setTab("chess")} icon={<Swords size={15} />} label="Chess" badge={incoming.length} badgeTone="alert" />
+        <TabButton active={tab === "chess"} onClick={() => setTab("chess")} icon={<Swords size={15} />} label="Chess" badge={chessIn.length} badgeTone="alert" />
+        <TabButton active={tab === "pool"} onClick={() => setTab("pool")} icon={<Target size={15} />} label="Pool" badge={poolIn.length} badgeTone="alert" />
         <TabButton active={tab === "uno"} onClick={() => setTab("uno")} icon={<Layers size={15} />} label="Uno" badge={joinableTables.length} badgeTone="neutral" />
       </div>
 
@@ -318,64 +327,38 @@ export default function ArenaLobby() {
 
       {/* -------- Chess panel -------- */}
       {tab === "chess" && (
-        <div className="flex flex-col gap-5">
-          {incoming.length === 0 && outgoing.length === 0 && chessActive.length === 0 && chessPast.length === 0 ? (
-            <EmptyPanel
-              icon={<Swords size={20} className="text-brand-light" />}
-              title="No chess games yet"
-              hint="Head to the Players tab and challenge someone to get started."
-              action={
-                <button onClick={() => setTab("players")} className="btn btn-primary px-4 py-2 text-sm">
-                  <Users size={15} /> Find a player
-                </button>
-              }
-            />
-          ) : (
-            <>
-              {(incoming.length > 0 || outgoing.length > 0) && (
-                <div className="flex flex-col gap-2">
-                  <h2 className="text-sm font-bold uppercase tracking-wide text-ink-dim">Challenges</h2>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {incoming.map((c) => (
-                      <div key={c.id} className="card flex items-center gap-3 p-4">
-                        <Avatar name={nameOf(c.challenger_id)} size={36} />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold">@{nameOf(c.challenger_id)}</div>
-                          <div className="text-xs text-ink-faint">challenges you · {formatMoney(c.stake)} chess</div>
-                        </div>
-                        <button onClick={() => respond(c, true)} disabled={busy} className="btn btn-primary px-3 py-1.5 text-xs">
-                          Accept
-                        </button>
-                        <button onClick={() => respond(c, false)} disabled={busy} className="btn btn-ghost px-3 py-1.5 text-xs">
-                          Decline
-                        </button>
-                      </div>
-                    ))}
-                    {outgoing.map((c) => (
-                      <div key={c.id} className="card flex items-center gap-3 p-4">
-                        <Avatar name={nameOf(c.opponent_id)} size={36} />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold">@{nameOf(c.opponent_id)}</div>
-                          <div className="text-xs text-ink-faint">waiting · {formatMoney(c.stake)} staked</div>
-                        </div>
-                        <button onClick={() => cancel(c)} disabled={busy} className="btn btn-ghost px-3 py-1.5 text-xs">
-                          Cancel
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+        <DuelPanel
+          game="chess"
+          icon={<Swords size={20} className="text-brand-light" />}
+          incoming={chessIn}
+          outgoing={chessOut}
+          active={chessActive}
+          past={chessPast}
+          nameOf={nameOf}
+          userId={user?.id}
+          busy={busy}
+          onRespond={respond}
+          onCancel={cancel}
+          onFind={() => setTab("players")}
+        />
+      )}
 
-              {chessActive.length > 0 && <MatchList title="Your games" matches={chessActive} />}
-              {chessPast.length > 0 && <ResultsList title="Recent chess results" matches={chessPast} userId={user?.id} />}
-
-              <button onClick={() => setTab("players")} className="btn btn-ghost self-start text-sm">
-                <Users size={15} /> Challenge another player
-              </button>
-            </>
-          )}
-        </div>
+      {/* -------- Pool panel -------- */}
+      {tab === "pool" && (
+        <DuelPanel
+          game="pool"
+          icon={<Target size={20} className="text-brand-light" />}
+          incoming={poolIn}
+          outgoing={poolOut}
+          active={poolActive}
+          past={poolPast}
+          nameOf={nameOf}
+          userId={user?.id}
+          busy={busy}
+          onRespond={respond}
+          onCancel={cancel}
+          onFind={() => setTab("players")}
+        />
       )}
 
       {/* -------- Uno panel -------- */}
@@ -451,11 +434,28 @@ export default function ArenaLobby() {
           <div className="flex items-center gap-3">
             <Avatar name={target.username} size={40} />
             <div>
-              <div className="text-sm text-ink-dim">Challenge to chess</div>
+              <div className="text-sm text-ink-dim">Challenge to a duel</div>
               <div className="text-lg font-bold">@{target.username}</div>
             </div>
           </div>
           <div className="mt-4 flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Game</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setChallengeGame("chess")}
+                className={clsx("btn flex items-center justify-center gap-1.5", challengeGame === "chess" ? "btn-primary" : "btn-ghost")}
+              >
+                <Swords size={15} /> Chess
+              </button>
+              <button
+                onClick={() => setChallengeGame("pool")}
+                className={clsx("btn flex items-center justify-center gap-1.5", challengeGame === "pool" ? "btn-primary" : "btn-ghost")}
+              >
+                <Target size={15} /> Pool
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-col gap-1.5">
             <label className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Your stake</label>
             <div className="relative">
               <Coins size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-yellow-300" />
@@ -582,6 +582,97 @@ function TabButton({
         </span>
       )}
     </button>
+  );
+}
+
+// Shared panel for the two 1-v-1 challenge games (chess + pool): challenges in
+// and out, your live games, and recent results.
+function DuelPanel({
+  game,
+  icon,
+  incoming,
+  outgoing,
+  active,
+  past,
+  nameOf,
+  userId,
+  busy,
+  onRespond,
+  onCancel,
+  onFind,
+}: {
+  game: DuelGame;
+  icon: React.ReactNode;
+  incoming: ArenaChallenge[];
+  outgoing: ArenaChallenge[];
+  active: ArenaMatch[];
+  past: ArenaMatch[];
+  nameOf: (id: string) => string;
+  userId?: string;
+  busy: boolean;
+  onRespond: (c: ArenaChallenge, accept: boolean) => void;
+  onCancel: (c: ArenaChallenge) => void;
+  onFind: () => void;
+}) {
+  const empty = incoming.length === 0 && outgoing.length === 0 && active.length === 0 && past.length === 0;
+  if (empty) {
+    return (
+      <EmptyPanel
+        icon={icon}
+        title={`No ${game} games yet`}
+        hint="Head to the Players tab and challenge someone to get started."
+        action={
+          <button onClick={onFind} className="btn btn-primary px-4 py-2 text-sm">
+            <Users size={15} /> Find a player
+          </button>
+        }
+      />
+    );
+  }
+  return (
+    <div className="flex flex-col gap-5">
+      {(incoming.length > 0 || outgoing.length > 0) && (
+        <div className="flex flex-col gap-2">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-ink-dim">Challenges</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {incoming.map((c) => (
+              <div key={c.id} className="card flex items-center gap-3 p-4">
+                <Avatar name={nameOf(c.challenger_id)} size={36} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">@{nameOf(c.challenger_id)}</div>
+                  <div className="text-xs text-ink-faint">challenges you · {formatMoney(c.stake)} {game}</div>
+                </div>
+                <button onClick={() => onRespond(c, true)} disabled={busy} className="btn btn-primary px-3 py-1.5 text-xs">
+                  Accept
+                </button>
+                <button onClick={() => onRespond(c, false)} disabled={busy} className="btn btn-ghost px-3 py-1.5 text-xs">
+                  Decline
+                </button>
+              </div>
+            ))}
+            {outgoing.map((c) => (
+              <div key={c.id} className="card flex items-center gap-3 p-4">
+                <Avatar name={nameOf(c.opponent_id)} size={36} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">@{nameOf(c.opponent_id)}</div>
+                  <div className="text-xs text-ink-faint">waiting · {formatMoney(c.stake)} staked</div>
+                </div>
+                <button onClick={() => onCancel(c)} disabled={busy} className="btn btn-ghost px-3 py-1.5 text-xs">
+                  Cancel
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {active.length > 0 && <MatchList title="Your games" matches={active} />}
+      {past.length > 0 && <ResultsList title={`Recent ${game} results`} matches={past} userId={userId} />}
+
+      <button onClick={onFind} className="btn btn-ghost self-start text-sm">
+        <Users size={15} /> Challenge another player
+      </button>
+    </div>
   );
 }
 
