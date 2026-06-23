@@ -69,6 +69,42 @@ export default function ChessMatch({ matchId }: { matchId: string }) {
   const myTurnChar = myRole === "white" ? "w" : "b";
   const isMyTurn = !!chess && match?.status === "active" && !pending && chess.turn() === myTurnChar;
 
+  // Captured pieces (and material advantage) derived from the current board:
+  // a side's captures = the opponent's pieces missing from the standard set.
+  const captures = useMemo(() => {
+    const empty = { white: [] as string[], black: [] as string[], adv: 0 };
+    if (!chess) return empty;
+    const start: Record<string, number> = { p: 8, n: 2, b: 2, r: 2, q: 1 };
+    const cnt = { w: { p: 0, n: 0, b: 0, r: 0, q: 0 }, b: { p: 0, n: 0, b: 0, r: 0, q: 0 } };
+    for (const row of chess.board()) {
+      for (const sq of row) {
+        if (sq && sq.type !== "k") cnt[sq.color][sq.type as "p"]++;
+      }
+    }
+    const byWhite: string[] = []; // black pieces White captured
+    const byBlack: string[] = []; // white pieces Black captured
+    let wv = 0;
+    let bv = 0;
+    for (const t of ["q", "r", "b", "n", "p"] as const) {
+      const nb = Math.max(0, start[t] - cnt.b[t]);
+      const nw = Math.max(0, start[t] - cnt.w[t]);
+      for (let i = 0; i < nb; i++) byWhite.push(t);
+      for (let i = 0; i < nw; i++) byBlack.push(t);
+      wv += nb * PIECE_VALUE[t];
+      bv += nw * PIECE_VALUE[t];
+    }
+    return { white: byWhite, black: byBlack, adv: wv - bv };
+  }, [chess]);
+
+  const capFor = (role?: string | null) => {
+    const white = role === "white";
+    return {
+      captured: white ? captures.white : captures.black,
+      capturedColor: (white ? "b" : "w") as "w" | "b",
+      advantage: white ? Math.max(0, captures.adv) : Math.max(0, -captures.adv),
+    };
+  };
+
   async function call(fn: string, args: Record<string, unknown>) {
     setBusy(true);
     setErr(null);
@@ -212,6 +248,7 @@ export default function ChessMatch({ matchId }: { matchId: string }) {
             name={opp?.profiles?.username ?? "Opponent"}
             role={opp?.role}
             toMove={!!chess && match.status === "active" && chess.turn() !== myTurnChar}
+            {...capFor(opp?.role)}
           />
 
           <ChessBoard
@@ -228,6 +265,7 @@ export default function ChessMatch({ matchId }: { matchId: string }) {
             role={me?.role}
             toMove={isMyTurn}
             you
+            {...capFor(me?.role)}
           />
 
           {/* status / result */}
@@ -307,16 +345,46 @@ export default function ChessMatch({ matchId }: { matchId: string }) {
   );
 }
 
+const PIECE_VALUE: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+const PIECE_GLYPH: Record<string, string> = { q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
+
+function CapturedRow({ pieces, color, advantage }: { pieces: string[]; color: "w" | "b"; advantage: number }) {
+  if (pieces.length === 0 && advantage <= 0) return null;
+  return (
+    <span className="flex items-center gap-0.5">
+      {pieces.map((t, i) => (
+        <span
+          key={i}
+          className="text-[15px] leading-none"
+          style={{
+            color: color === "w" ? "#f4f4f5" : "#0b0b12",
+            textShadow: color === "w" ? "0 0 1.5px rgba(0,0,0,0.7)" : "0 0 1.5px rgba(255,255,255,0.35)",
+          }}
+        >
+          {PIECE_GLYPH[t]}
+        </span>
+      ))}
+      {advantage > 0 && <span className="ml-0.5 text-[11px] font-bold text-ink-faint">+{advantage}</span>}
+    </span>
+  );
+}
+
 function PlayerBar({
   name,
   role,
   toMove,
   you,
+  captured = [],
+  capturedColor = "b",
+  advantage = 0,
 }: {
   name: string;
   role?: string | null;
   toMove?: boolean;
   you?: boolean;
+  captured?: string[];
+  capturedColor?: "w" | "b";
+  advantage?: number;
 }) {
   return (
     <div
@@ -325,13 +393,14 @@ function PlayerBar({
         toMove ? "border-brand/40 bg-brand/10" : "border-border bg-bg-soft/40"
       )}
     >
-      <span className={clsx("h-3 w-3 rounded-full ring-1 ring-white/20", role === "white" ? "bg-white" : "bg-zinc-900")} />
-      <span className="font-semibold">
+      <span className={clsx("h-3 w-3 shrink-0 rounded-full ring-1 ring-white/20", role === "white" ? "bg-white" : "bg-zinc-900")} />
+      <span className="shrink-0 font-semibold">
         {name}
         {you && <span className="text-ink-faint"> (you)</span>}
       </span>
-      <span className="ml-auto text-xs capitalize text-ink-faint">{role}</span>
-      {toMove && <span className="rounded-full bg-brand/20 px-2 py-0.5 text-[10px] font-bold text-brand-light">to move</span>}
+      <CapturedRow pieces={captured} color={capturedColor} advantage={advantage} />
+      <span className="ml-auto shrink-0 text-xs capitalize text-ink-faint">{role}</span>
+      {toMove && <span className="shrink-0 rounded-full bg-brand/20 px-2 py-0.5 text-[10px] font-bold text-brand-light">to move</span>}
     </div>
   );
 }
