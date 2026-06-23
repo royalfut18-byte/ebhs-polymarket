@@ -80,6 +80,11 @@ export default function PoolTable({
   const scaleRef = useRef(1);
   const oppAimRef = useRef<OpponentAim | null>(null);
   const chargeRef = useRef(0); // live power while charging (for the cue pull-back)
+  // Aim is set by DRAGGING on the table and stays locked on release — no
+  // hover-follow, so moving to the power bar never disturbs your aim.
+  const aimingRef = useRef(false);
+  const downPointRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const movedRef = useRef(false);
 
   const [cueOverride, setCueOverride] = useState<{ x: number; y: number } | null>(null);
   const cueOverrideRef = useRef(cueOverride);
@@ -214,35 +219,66 @@ export default function PoolTable({
     return () => ro.disconnect();
   }, []);
 
-  function toLogical(e: React.PointerEvent) {
+  function logicalFromClient(clientX: number, clientY: number) {
     const rect = canvasRef.current!.getBoundingClientRect();
     const s = scaleRef.current;
-    return { x: (e.clientX - rect.left) / s, y: (e.clientY - rect.top) / s };
+    return { x: (clientX - rect.left) / s, y: (clientY - rect.top) / s };
   }
   function cuePos(): PoolBallState | undefined {
     return dispRef.current.find((b) => b.i === 0);
   }
 
-  function onMove(e: React.PointerEvent) {
-    if (animating() || !canPlay) return;
-    const p = toLogical(e);
-    mouseRef.current = p;
-    const cue = cueOverrideRef.current ?? cuePos();
-    if (cue) {
-      aimRef.current = Math.atan2(p.y - cue.y, p.x - cue.x);
-      broadcastAim();
-    }
+  // Hover only updates the ball-in-hand placement ghost — never the aim.
+  function onCanvasMove(e: React.PointerEvent) {
+    if (!canPlay) return;
+    mouseRef.current = logicalFromClient(e.clientX, e.clientY);
   }
-  function onDown(e: React.PointerEvent) {
+  // Press to start an aim-drag (or, with ball-in-hand, a tap to place the cue).
+  function onCanvasDown(e: React.PointerEvent) {
     if (animating() || !canPlay || state.pending || state.phase === "done") return;
-    if (ballInHand) {
-      const p = toLogical(e);
-      if (isValidCuePlacement(p.x, p.y, dispRef.current)) {
-        setCueOverride({ x: p.x, y: p.y });
-        broadcastAim();
+    canvasRef.current?.setPointerCapture?.(e.pointerId);
+    aimingRef.current = true;
+    movedRef.current = false;
+    downPointRef.current = logicalFromClient(e.clientX, e.clientY);
+  }
+
+  // Drag-to-aim handled on window so it keeps working off the canvas; the aim
+  // freezes (locks) the instant you release.
+  const broadcastAimRef = useRef<() => void>(() => {});
+  broadcastAimRef.current = broadcastAim;
+  useEffect(() => {
+    function move(e: PointerEvent) {
+      if (!aimingRef.current) return;
+      const p = logicalFromClient(e.clientX, e.clientY);
+      const d = Math.hypot(p.x - downPointRef.current.x, p.y - downPointRef.current.y);
+      if (d > 1.2) movedRef.current = true; // ~half a ball: distinguishes drag from tap
+      if (movedRef.current) {
+        const cue = cueOverrideRef.current ?? cuePos();
+        if (cue) {
+          aimRef.current = Math.atan2(p.y - cue.y, p.x - cue.x);
+          broadcastAimRef.current();
+        }
       }
     }
-  }
+    function up() {
+      if (!aimingRef.current) return;
+      aimingRef.current = false;
+      // A tap (no drag) while ball-in-hand places the cue ball.
+      if (!movedRef.current && stateRef.current.ballInHand && canPlayRef.current) {
+        const p = downPointRef.current;
+        if (isValidCuePlacement(p.x, p.y, dispRef.current)) {
+          setCueOverride({ x: p.x, y: p.y });
+          broadcastAimRef.current();
+        }
+      }
+    }
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  }, []);
 
   function shoot(power: number) {
     if (animating() || !canPlayRef.current) return;
@@ -532,8 +568,8 @@ export default function PoolTable({
         >
           <canvas
             ref={canvasRef}
-            onPointerMove={onMove}
-            onPointerDown={onDown}
+            onPointerMove={onCanvasMove}
+            onPointerDown={onCanvasDown}
             className={clsx("block w-full touch-none", showControls ? "cursor-crosshair" : "cursor-default")}
           />
           {animating() && (
@@ -544,8 +580,8 @@ export default function PoolTable({
         </div>
         {showControls && (
           <p className="text-center text-[11px] text-ink-faint">
-            {ballInHand ? "Click an open spot to place the cue ball · " : ""}
-            Move the mouse to aim · drag the power bar and release to shoot.
+            {ballInHand ? "Tap an open spot to place the cue ball · " : ""}
+            Drag on the table to aim (it locks when you let go) · then drag the power bar and release to shoot.
           </p>
         )}
       </div>
