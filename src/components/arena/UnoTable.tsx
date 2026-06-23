@@ -144,7 +144,7 @@ export default function UnoTable({ matchId }: { matchId: string }) {
       fromY = (box.h * pct.y) / 100;
     }
     setFly({ card, fromX, fromY, key: lastPlay.at });
-    const id = window.setTimeout(() => setFly(null), 520);
+    const id = window.setTimeout(() => setFly(null), 650);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view?.log, box.w, box.h]);
@@ -352,52 +352,52 @@ export default function UnoTable({ matchId }: { matchId: string }) {
               );
             })}
 
-            {/* centre: direction ring + draw + discard */}
-            <div className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2">
+            {/* centre: the DISCARD is anchored exactly at box-centre (so the
+                play animation lands on it); the draw pile sits to its left and
+                the direction ring spins around it. */}
+            <div
+              className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2"
+              style={{ width: centerCard * 0.68, height: centerCard }}
+            >
               <motion.div
                 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-                style={{ width: centerCard * 2.7, height: centerCard * 2.7 }}
+                style={{ width: centerCard * 2.8, height: centerCard * 2.8 }}
                 animate={{ rotate: dir === 1 ? 360 : -360 }}
                 transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
               >
                 <DirectionRing color={colorHex} />
               </motion.div>
 
-              <div className="relative flex items-center gap-4">
-                {/* draw pile */}
-                <button
-                  onClick={() => call("uno_draw", { p_match: matchId })}
-                  disabled={!isMyTurn || busy}
-                  className="group relative transition-transform enabled:hover:-translate-y-1 disabled:cursor-default"
-                  style={{ width: centerCard * 0.68, height: centerCard }}
-                  title={pending > 0 ? `Draw ${pending}` : "Draw a card"}
-                >
-                  {[0, 1, 2].map((s) => (
-                    <div key={s} className="absolute left-0 top-0" style={{ transform: `translate(${s * 2}px, ${-s * 2}px)` }}>
-                      <UnoCardBack size={centerCard} />
-                    </div>
-                  ))}
-                  {isMyTurn && (
-                    <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-black">
-                      {pending > 0 ? `Draw ${pending}` : "Draw"}
-                    </span>
-                  )}
-                </button>
-
-                {/* discard pile */}
-                <div className="relative" style={{ width: centerCard * 0.68, height: centerCard }}>
-                  <div className="pointer-events-none absolute -inset-3 rounded-full opacity-70 blur-xl" style={{ background: colorHex }} />
-                  {/* faint stack underneath */}
-                  <div className="absolute left-0 top-0 opacity-50" style={{ transform: "rotate(-10deg)" }}>
+              {/* draw pile (to the left of the discard) */}
+              <button
+                onClick={() => call("uno_draw", { p_match: matchId })}
+                disabled={!isMyTurn || busy}
+                className="group absolute top-0 right-full mr-6 transition-transform enabled:hover:-translate-y-1 disabled:cursor-default"
+                style={{ width: centerCard * 0.68, height: centerCard }}
+                title={pending > 0 ? `Draw ${pending}` : "Draw a card"}
+              >
+                {[0, 1, 2].map((s) => (
+                  <div key={s} className="absolute left-0 top-0" style={{ transform: `translate(${s * 2}px, ${-s * 2}px)` }}>
                     <UnoCardBack size={centerCard} />
                   </div>
-                  {top && (
-                    <div className="absolute left-0 top-0" style={{ transform: "rotate(4deg)" }}>
-                      <UnoCard card={top.v === "wild" || top.v === "wild4" ? { c: (color ?? "r") as UnoColor, v: top.v } : top} size={centerCard} />
-                    </div>
-                  )}
-                </div>
+                ))}
+                {isMyTurn && (
+                  <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-black">
+                    {pending > 0 ? `Draw ${pending}` : "Draw"}
+                  </span>
+                )}
+              </button>
+
+              {/* discard: glow aura + faint stack + the top card, all centred here */}
+              <div className="pointer-events-none absolute -inset-3 rounded-full opacity-70 blur-xl" style={{ background: colorHex }} />
+              <div className="absolute left-0 top-0 opacity-50" style={{ transform: "rotate(-10deg)" }}>
+                <UnoCardBack size={centerCard} />
               </div>
+              {top && (
+                <div className="absolute left-0 top-0" style={{ transform: "rotate(4deg)" }}>
+                  <UnoCard card={top.v === "wild" || top.v === "wild4" ? { c: (color ?? "r") as UnoColor, v: top.v } : top} size={centerCard} />
+                </div>
+              )}
 
               {/* current colour + stack */}
               <div className="absolute -bottom-9 left-1/2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap">
@@ -421,16 +421,18 @@ export default function UnoTable({ matchId }: { matchId: string }) {
               )}
             </AnimatePresence>
 
-            {/* put-down animation */}
+            {/* put-down animation — a solid card flies from the player to the
+                discard pile and settles exactly on it (same spot + tilt as the
+                resting top card), so it reads as landing, not vanishing. */}
             <AnimatePresence>
               {fly && (
                 <motion.div
                   key={fly.key}
                   className="pointer-events-none absolute left-0 top-0 z-20"
-                  initial={{ x: fly.fromX, y: fly.fromY, scale: 0.5, rotate: -30, opacity: 0.2 }}
+                  initial={{ x: fly.fromX, y: fly.fromY, scale: 0.86, rotate: -14, opacity: 1 }}
                   animate={{ x: box.w * 0.5, y: box.h * 0.42, scale: 1, rotate: 4, opacity: 1 }}
-                  exit={{ opacity: 1 }}
-                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                   style={{ marginLeft: -centerCard * 0.34, marginTop: -centerCard * 0.5 }}
                 >
                   <UnoCard card={fly.card} size={centerCard} />
@@ -438,27 +440,29 @@ export default function UnoTable({ matchId }: { matchId: string }) {
               )}
             </AnimatePresence>
 
-            {/* my hand (fanned) */}
+            {/* my hand (fanned). Playable cards lift UP with a glow — nothing is
+                dimmed/transparent, and there's no downward dip so cards never
+                clip below the table edge. */}
             {!finished && (
-              <div className="absolute inset-x-0 bottom-1 flex items-end justify-center" style={{ height: handCard + 24 }}>
+              <div className="absolute inset-x-0 bottom-3 flex items-end justify-center" style={{ height: handCard + 40 }}>
                 {hand.map((card, i) => {
                   const n = hand.length;
                   const t = n > 1 ? i / (n - 1) - 0.5 : 0;
-                  const rot = t * Math.min(34, n * 5);
-                  const lift = Math.abs(t) * Math.min(26, n * 3);
+                  const rot = t * Math.min(26, n * 4);
                   const ok = playable(card);
+                  const raise = ok ? 24 : 0;
                   return (
                     <div
                       key={i}
-                      className="transition-transform"
+                      className="transition-transform duration-200"
                       style={{
-                        transform: `rotate(${rot}deg) translateY(${lift}px)`,
+                        transform: `rotate(${rot}deg) translateY(${-raise}px)`,
                         transformOrigin: "bottom center",
                         marginLeft: i === 0 ? 0 : -handCard * 0.42,
-                        zIndex: i,
+                        zIndex: ok ? 100 + i : i,
                       }}
                     >
-                      <UnoCard card={card} size={handCard} selectable={ok} dimmed={isMyTurn && !ok} onClick={() => playCard(i)} />
+                      <UnoCard card={card} size={handCard} selectable={ok} glow={ok} onClick={() => playCard(i)} />
                     </div>
                   );
                 })}

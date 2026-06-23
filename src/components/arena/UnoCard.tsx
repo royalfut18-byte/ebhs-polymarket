@@ -43,14 +43,14 @@ export default function UnoCard({
   card,
   size = 64,
   selectable = false,
-  dimmed = false,
+  glow = false,
   onClick,
   className,
 }: {
   card: Card;
   size?: number;
   selectable?: boolean;
-  dimmed?: boolean;
+  glow?: boolean;
   onClick?: () => void;
   className?: string;
 }) {
@@ -116,7 +116,7 @@ export default function UnoCard({
       className={clsx(
         "shrink-0 rounded-[14%] transition-transform",
         selectable ? "cursor-pointer hover:-translate-y-2 focus:-translate-y-2" : "cursor-default",
-        dimmed && "opacity-40 saturate-50",
+        glow && "ring-[3px] ring-white drop-shadow-[0_0_14px_rgba(255,255,255,0.55)]",
         className
       )}
     >
