@@ -139,24 +139,33 @@ export function simulate(start: PoolBallState[], cueVx: number, cueVy: number): 
             const d = Math.sqrt(d2);
             const nx = dx / d;
             const ny = dy / d;
-            // separate the overlap
-            const overlap = minDist - d;
-            a.x -= (nx * overlap) / 2;
-            a.y -= (ny * overlap) / 2;
-            b.x += (nx * overlap) / 2;
-            b.y += (ny * overlap) / 2;
-            // exchange velocity along the normal
+            // Relative velocity along the contact normal. ONLY resolve when the
+            // balls are actually approaching (vn < 0). This is essential: the
+            // racked balls sit exactly 2R apart, so without this guard float
+            // rounding makes them register as "overlapping" and every shot
+            // nudges the whole rack apart (balls drifting on their own + bogus
+            // first-contact/foul detection). Resting balls (vn ≈ 0) are skipped;
+            // the impact chain still propagates through moving balls.
             const va = a.vx * nx + a.vy * ny;
             const vb = b.vx * nx + b.vy * ny;
-            const diff = vb - va;
-            a.vx += diff * nx;
-            a.vy += diff * ny;
-            b.vx -= diff * nx;
-            b.vy -= diff * ny;
-            // record the cue's first object-ball contact
-            if (events.firstHit === null) {
-              if (a.i === 0 && b.i !== 0) events.firstHit = b.i;
-              else if (b.i === 0 && a.i !== 0) events.firstHit = a.i;
+            const vn = vb - va;
+            if (vn < 0) {
+              // separate the overlap
+              const overlap = minDist - d;
+              a.x -= (nx * overlap) / 2;
+              a.y -= (ny * overlap) / 2;
+              b.x += (nx * overlap) / 2;
+              b.y += (ny * overlap) / 2;
+              // exchange velocity along the normal (equal mass elastic)
+              a.vx += vn * nx;
+              a.vy += vn * ny;
+              b.vx -= vn * nx;
+              b.vy -= vn * ny;
+              // record the cue's first object-ball contact
+              if (events.firstHit === null) {
+                if (a.i === 0 && b.i !== 0) events.firstHit = b.i;
+                else if (b.i === 0 && a.i !== 0) events.firstHit = a.i;
+              }
             }
           }
         }
