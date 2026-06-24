@@ -28,7 +28,7 @@ function colorOf(n: number) {
 
 export default function Roulette() {
   const { profile } = useAuth();
-  const { play, busy, error } = useCasino();
+  const { play, settle, busy, error } = useCasino();
 
   const [amount, setAmount] = useState(10);
   const [chips, setChips] = useState<Record<string, Bet>>({});
@@ -58,7 +58,9 @@ export default function Roulette() {
     if (bets.length === 0 || locked) return;
     try {
       setRevealed(false);
-      const r = await play<RouletteResult>("casino_roulette", { p_bets: bets });
+      // Defer the balance/history/leaderboard refresh until the wheel stops, so
+      // the "recent" strip and balance don't reveal the outcome mid-spin.
+      const r = await play<RouletteResult>("casino_roulette", { p_bets: bets }, { defer: true });
       // Start the wheel toward the winning pocket, but keep the result hidden.
       setResult(r);
       setNonce((n) => n + 1);
@@ -66,6 +68,7 @@ export default function Roulette() {
       setTimeout(() => {
         setSpinning(false);
         setRevealed(true);
+        settle(); // now reveal balance + recent results
         if (r.payout > 0) celebrate(r.payout >= r.total * 5);
       }, 4200);
     } catch {

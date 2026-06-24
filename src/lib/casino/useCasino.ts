@@ -56,11 +56,21 @@ export function useCasino() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Push the result of a bet to the rest of the UI: balance, the "recent" strip
+  // and the leaderboard. Games with a reveal animation (e.g. roulette's spin)
+  // call this AFTER the animation so the outcome isn't spoiled by the history
+  // strip / balance updating the instant the RPC returns.
+  const settle = useCallback(() => {
+    refreshProfile();
+    if (user) qc.invalidateQueries({ queryKey: ["casino-history", user.id] });
+    qc.invalidateQueries({ queryKey: ["leaderboard"] });
+  }, [refreshProfile, qc, user]);
+
   const play = useCallback(
     async <T = Record<string, unknown>>(
       fn: string,
       args: Record<string, unknown>,
-      opts?: { allowConcurrent?: boolean }
+      opts?: { allowConcurrent?: boolean; defer?: boolean }
     ): Promise<T> => {
       // Synchronous guard: reject concurrent calls immediately without waiting
       // for React to re-render with busy=true (which happens too late). Games
@@ -76,10 +86,9 @@ export function useCasino() {
       try {
         const { data, error: rpcError } = await supabase.rpc(fn, args);
         if (rpcError) throw new Error(rpcError.message);
-        // Sync balance + leaderboard + history in the background.
-        refreshProfile();
-        if (user) qc.invalidateQueries({ queryKey: ["casino-history", user.id] });
-        qc.invalidateQueries({ queryKey: ["leaderboard"] });
+        // Sync balance + leaderboard + history — unless the game wants to defer
+        // it until its reveal animation finishes.
+        if (!opts?.defer) settle();
         return data as T;
       } catch (e) {
         const msg = friendlyError(e);
@@ -102,5 +111,5 @@ export function useCasino() {
     [supabase, refreshProfile, qc, user]
   );
 
-  return { play, busy, error, setError };
+  return { play, settle, busy, error, setError };
 }
