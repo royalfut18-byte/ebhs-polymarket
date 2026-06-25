@@ -30,9 +30,9 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 // Opponent screen position on an ellipse around the table (me at the bottom).
 // Spread across the top ~200° arc, left → over the top → right.
 function anchorPct(i: number, k: number) {
-  if (k <= 0) return { x: 50, y: 12 };
+  if (k <= 0) return { x: 50, y: 16 };
   const a = ((170 + ((i + 1) / (k + 1)) * 200) * Math.PI) / 180;
-  return { x: 50 + 43 * Math.cos(a), y: 46 + 34 * Math.sin(a) };
+  return { x: 50 + 41 * Math.cos(a), y: 47 + 31 * Math.sin(a) };
 }
 
 export default function UnoTable({ matchId }: { matchId: string }) {
@@ -441,33 +441,42 @@ export default function UnoTable({ matchId }: { matchId: string }) {
             </AnimatePresence>
 
             {/* my hand (fanned). Playable cards lift UP with a glow — nothing is
-                dimmed/transparent, and there's no downward dip so cards never
-                clip below the table edge. */}
-            {!finished && (
-              <div className="absolute inset-x-0 bottom-3 flex items-end justify-center" style={{ height: handCard + 40 }}>
-                {hand.map((card, i) => {
-                  const n = hand.length;
-                  const t = n > 1 ? i / (n - 1) - 0.5 : 0;
-                  const rot = t * Math.min(26, n * 4);
-                  const ok = playable(card);
-                  const raise = ok ? 24 : 0;
-                  return (
-                    <div
-                      key={i}
-                      className="transition-transform duration-200"
-                      style={{
-                        transform: `rotate(${rot}deg) translateY(${-raise}px)`,
-                        transformOrigin: "bottom center",
-                        marginLeft: i === 0 ? 0 : -handCard * 0.42,
-                        zIndex: ok ? 100 + i : i,
-                      }}
-                    >
-                      <UnoCard card={card} size={handCard} selectable={ok} glow={ok} onClick={() => playCard(i)} />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                dimmed/transparent. Overlap is adaptive so the whole hand always
+                fits the table, and corner indices keep every card readable even
+                when overlapped. */}
+            {!finished && (() => {
+              const n = hand.length;
+              const cardW = handCard * 0.68;
+              const avail = (box.w || 600) * 0.9;
+              // centre-to-centre spacing: spread out when there's room, tighten
+              // (down to ~32% of a card) when the hand is large, never below the
+              // visible corner index.
+              const step = n > 1 ? clamp((avail - cardW) / (n - 1), cardW * 0.32, cardW * 0.82) : cardW;
+              return (
+                <div className="absolute inset-x-0 bottom-3 flex items-end justify-center" style={{ height: handCard + 44 }}>
+                  {hand.map((card, i) => {
+                    const t = n > 1 ? i / (n - 1) - 0.5 : 0;
+                    const rot = t * Math.min(22, n * 3.5);
+                    const ok = playable(card);
+                    const raise = ok ? 26 : 0;
+                    return (
+                      <div
+                        key={i}
+                        className="transition-transform duration-200"
+                        style={{
+                          transform: `rotate(${rot}deg) translateY(${-raise}px)`,
+                          transformOrigin: "bottom center",
+                          marginLeft: i === 0 ? 0 : step - cardW,
+                          zIndex: ok ? 100 + i : i,
+                        }}
+                      >
+                        <UnoCard card={card} size={handCard} selectable={ok} glow={ok} onClick={() => playCard(i)} />
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             {/* you (turn) badge bottom-left */}
             <div className="absolute bottom-2 left-3 flex items-center gap-2">

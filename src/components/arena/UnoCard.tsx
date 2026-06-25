@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Ban, Plus, RefreshCw } from "lucide-react";
+import { Ban, RefreshCw } from "lucide-react";
 import type { UnoCard as Card, UnoColor, UnoValue } from "@/lib/arena/types";
 
 // Solid, crisp Uno cards built from divs/SVG icons (not blurry glyphs). The four
@@ -37,6 +37,17 @@ function Glyph({ v, size }: { v: UnoValue; size: number }) {
   if (v === "wild4") return <span className="font-black leading-none">+4</span>;
   if (v === "wild") return null;
   return <span className="font-black leading-none">{v}</span>;
+}
+
+// Short corner index so a card stays readable when fanned/overlapped (only its
+// top-left corner shows).
+function cornerLabel(v: UnoValue): string {
+  if (v === "skip") return "Ø";
+  if (v === "rev") return "⇄";
+  if (v === "draw2") return "+2";
+  if (v === "wild") return "★";
+  if (v === "wild4") return "+4";
+  return v;
 }
 
 export default function UnoCard({
@@ -98,11 +109,19 @@ export default function UnoCard({
       >
         <Glyph v={card.v} size={Math.round(size * 0.34)} />
       </span>
-      {card.v === "wild4" && (
-        <span className="absolute bottom-[6%] right-[8%] text-white" style={{ fontSize: Math.round(size * 0.2) }}>
-          <Plus size={Math.round(size * 0.2)} strokeWidth={3} />
-        </span>
-      )}
+      {/* corner indices — stay visible when cards overlap in the hand fan */}
+      <span
+        className="absolute left-[7%] top-[3%] font-black leading-none text-white"
+        style={{ fontSize: Math.round(size * 0.2), textShadow: "0 0 2px rgba(0,0,0,0.95), 0 1px 1px rgba(0,0,0,0.95)" }}
+      >
+        {cornerLabel(card.v)}
+      </span>
+      <span
+        className="absolute bottom-[3%] right-[7%] rotate-180 font-black leading-none text-white"
+        style={{ fontSize: Math.round(size * 0.2), textShadow: "0 0 2px rgba(0,0,0,0.95), 0 1px 1px rgba(0,0,0,0.95)" }}
+      >
+        {cornerLabel(card.v)}
+      </span>
     </div>
   );
 
