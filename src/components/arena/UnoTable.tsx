@@ -280,10 +280,16 @@ export default function UnoTable({ matchId }: { matchId: string }) {
 
   // ---------------- Active / finished ----------------
   const centerCard = clamp(box.w * 0.1, 54, 92);
+  const centerCardW = centerCard * 0.68;
+  const centerGap = Math.round(centerCard * 0.4);
   const handCard = clamp(box.w * 0.105, 52, 90);
   const backSize = clamp(box.w * 0.05, 26, 40);
   const hand = view.my_hand ?? [];
   const finished = view.status === "finished" || view.status === "void";
+  // The discard is the RIGHT card of the centred [draw | discard] group, so its
+  // centre is offset right of box-centre — the play animation lands exactly here.
+  const flyTargetX = box.w * 0.5 + centerGap / 2 + centerCardW / 2;
+  const flyTargetY = box.h * 0.44;
 
   return (
     <FadeIn className="mx-auto flex max-w-5xl flex-col gap-4">
@@ -299,11 +305,11 @@ export default function UnoTable({ matchId }: { matchId: string }) {
           >
             {/* glowing centre burst */}
             <div
-              className="pointer-events-none absolute left-1/2 top-[42%] h-[60%] w-[60%] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70 blur-3xl"
+              className="pointer-events-none absolute left-1/2 top-[44%] h-[60%] w-[60%] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70 blur-3xl"
               style={{ background: `radial-gradient(circle, ${colorHex}55, transparent 70%)` }}
             />
             <motion.div
-              className="pointer-events-none absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 select-none text-[18vw] font-black italic tracking-tighter text-white/5 sm:text-[120px]"
+              className="pointer-events-none absolute left-1/2 top-[44%] -translate-x-1/2 -translate-y-1/2 select-none text-[18vw] font-black italic tracking-tighter text-white/5 sm:text-[120px]"
               animate={{ scale: [1, 1.04, 1] }}
               transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
             >
@@ -352,52 +358,49 @@ export default function UnoTable({ matchId }: { matchId: string }) {
               );
             })}
 
-            {/* centre: the DISCARD is anchored exactly at box-centre (so the
-                play animation lands on it); the draw pile sits to its left and
-                the direction ring spins around it. */}
-            <div
-              className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2"
-              style={{ width: centerCard * 0.68, height: centerCard }}
-            >
-              <motion.div
-                className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-                style={{ width: centerCard * 2.8, height: centerCard * 2.8 }}
-                animate={{ rotate: dir === 1 ? 360 : -360 }}
-                transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
-              >
-                <DirectionRing color={colorHex} />
-              </motion.div>
+            {/* centre: the draw pile + discard sit side-by-side as ONE centred
+                group; the direction ring encircles both and its arrows point the
+                way play is going. */}
+            <div className="absolute left-1/2 top-[44%] -translate-x-1/2 -translate-y-1/2">
+              {/* direction ring, centred on the group */}
+              <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                <DirectionRing dir={dir} color={colorHex} size={centerCard * 2.9} />
+              </div>
 
-              {/* draw pile (to the left of the discard) */}
-              <button
-                onClick={() => call("uno_draw", { p_match: matchId })}
-                disabled={!isMyTurn || busy}
-                className="group absolute top-0 right-full mr-6 transition-transform enabled:hover:-translate-y-1 disabled:cursor-default"
-                style={{ width: centerCard * 0.68, height: centerCard }}
-                title={pending > 0 ? `Draw ${pending}` : "Draw a card"}
-              >
-                {[0, 1, 2].map((s) => (
-                  <div key={s} className="absolute left-0 top-0" style={{ transform: `translate(${s * 2}px, ${-s * 2}px)` }}>
+              <div className="relative flex items-center" style={{ gap: centerGap }}>
+                {/* draw pile */}
+                <button
+                  onClick={() => call("uno_draw", { p_match: matchId })}
+                  disabled={!isMyTurn || busy}
+                  className="group relative transition-transform enabled:hover:-translate-y-1 disabled:cursor-default"
+                  style={{ width: centerCardW, height: centerCard }}
+                  title={pending > 0 ? `Draw ${pending}` : "Draw a card"}
+                >
+                  {[0, 1, 2].map((s) => (
+                    <div key={s} className="absolute left-0 top-0" style={{ transform: `translate(${s * 2}px, ${-s * 2}px)` }}>
+                      <UnoCardBack size={centerCard} />
+                    </div>
+                  ))}
+                  {isMyTurn && (
+                    <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-black">
+                      {pending > 0 ? `Draw ${pending}` : "Draw"}
+                    </span>
+                  )}
+                </button>
+
+                {/* discard pile */}
+                <div className="relative" style={{ width: centerCardW, height: centerCard }}>
+                  <div className="pointer-events-none absolute -inset-2 rounded-full opacity-70 blur-xl" style={{ background: colorHex }} />
+                  <div className="absolute left-0 top-0 opacity-50" style={{ transform: "rotate(-10deg)" }}>
                     <UnoCardBack size={centerCard} />
                   </div>
-                ))}
-                {isMyTurn && (
-                  <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-black">
-                    {pending > 0 ? `Draw ${pending}` : "Draw"}
-                  </span>
-                )}
-              </button>
-
-              {/* discard: glow aura + faint stack + the top card, all centred here */}
-              <div className="pointer-events-none absolute -inset-3 rounded-full opacity-70 blur-xl" style={{ background: colorHex }} />
-              <div className="absolute left-0 top-0 opacity-50" style={{ transform: "rotate(-10deg)" }}>
-                <UnoCardBack size={centerCard} />
-              </div>
-              {top && (
-                <div className="absolute left-0 top-0" style={{ transform: "rotate(4deg)" }}>
-                  <UnoCard card={top.v === "wild" || top.v === "wild4" ? { c: (color ?? "r") as UnoColor, v: top.v } : top} size={centerCard} />
+                  {top && (
+                    <div className="absolute left-0 top-0" style={{ transform: "rotate(4deg)" }}>
+                      <UnoCard card={top.v === "wild" || top.v === "wild4" ? { c: (color ?? "r") as UnoColor, v: top.v } : top} size={centerCard} />
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* current colour + stack */}
               <div className="absolute -bottom-9 left-1/2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap">
@@ -430,10 +433,10 @@ export default function UnoTable({ matchId }: { matchId: string }) {
                   key={fly.key}
                   className="pointer-events-none absolute left-0 top-0 z-20"
                   initial={{ x: fly.fromX, y: fly.fromY, scale: 0.86, rotate: -14, opacity: 1 }}
-                  animate={{ x: box.w * 0.5, y: box.h * 0.42, scale: 1, rotate: 4, opacity: 1 }}
+                  animate={{ x: flyTargetX, y: flyTargetY, scale: 1, rotate: 4, opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ marginLeft: -centerCard * 0.34, marginTop: -centerCard * 0.5 }}
+                  style={{ marginLeft: -centerCardW / 2, marginTop: -centerCard / 2 }}
                 >
                   <UnoCard card={fly.card} size={centerCard} />
                 </motion.div>
@@ -577,13 +580,26 @@ export default function UnoTable({ matchId }: { matchId: string }) {
 }
 
 // Dashed ring with two arrowheads showing the play direction.
-function DirectionRing({ color }: { color: string }) {
+// Shows the play direction: a faint dashed track with two tangential arrowheads
+// that orbit (and point) the way turns are going — clockwise for dir 1.
+function DirectionRing({ dir, color, size }: { dir: number; color: string; size: number }) {
+  // At the top of the circle the clockwise tangent points right (+x); flip for ccw.
+  const head = dir === 1 ? "M47 1 l11 6 l-11 6 z" : "M53 1 l-11 6 l11 6 z";
   return (
-    <svg viewBox="0 0 100 100" className="h-full w-full opacity-50">
-      <circle cx="50" cy="50" r="46" fill="none" stroke={color} strokeWidth="2" strokeDasharray="3 7" strokeLinecap="round" />
-      <path d="M50 4 l-6 6 l12 0 z" fill={color} />
-      <path d="M50 96 l6 -6 l-12 0 z" fill={color} />
-    </svg>
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full opacity-40">
+        <circle cx="50" cy="50" r="46" fill="none" stroke={color} strokeWidth="2.5" strokeDasharray="2 7" strokeLinecap="round" />
+      </svg>
+      <motion.svg
+        viewBox="0 0 100 100"
+        className="absolute inset-0 h-full w-full"
+        animate={{ rotate: dir === 1 ? 360 : -360 }}
+        transition={{ duration: 7, repeat: Infinity, ease: "linear" }}
+      >
+        <path d={head} fill={color} transform="translate(0 3)" />
+        <path d={head} fill={color} transform="rotate(180 50 50) translate(0 3)" />
+      </motion.svg>
+    </div>
   );
 }
 
