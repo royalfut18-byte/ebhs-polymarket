@@ -42,6 +42,8 @@ export default function UnoTable({ matchId }: { matchId: string }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [wildIndex, setWildIndex] = useState<number | null>(null);
+  const [stackLead, setStackLead] = useState<number | null>(null); // multi-play: tapped card
+  const [stackPicked, setStackPicked] = useState<number[]>([]); // multi-play: chosen indices
   const [now, setNow] = useState(Date.now());
 
   const { data: view, isLoading, isError } = useQuery({
@@ -149,6 +151,44 @@ export default function UnoTable({ matchId }: { matchId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view?.log, box.w, box.h]);
 
+  // Pickup animation: when a new "drew" entry appears, fly a card-back from the
+  // draw pile to whoever drew (visible to everyone).
+  const [drawFly, setDrawFly] = useState<{ toX: number; toY: number; key: string } | null>(null);
+  const drawKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (!view || !box.w) return;
+    const log = view.log ?? [];
+    let last: { u: string | null; at: string } | null = null;
+    for (let i = log.length - 1; i >= 0; i--) {
+      if (typeof log[i].t === "string" && log[i].t.startsWith("drew")) {
+        last = { u: log[i].u, at: log[i].at };
+        break;
+      }
+    }
+    if (!last) return;
+    if (drawKey.current === null) {
+      drawKey.current = last.at;
+      return;
+    }
+    if (last.at === drawKey.current) return;
+    drawKey.current = last.at;
+    let toX: number;
+    let toY: number;
+    if (last.u === user?.id) {
+      toX = box.w * 0.5;
+      toY = box.h * 0.95;
+    } else {
+      const idx = others.findIndex((p) => p.user_id === last!.u);
+      const pct = anchorPct(idx < 0 ? 0 : idx, others.length);
+      toX = (box.w * pct.x) / 100;
+      toY = (box.h * pct.y) / 100;
+    }
+    setDrawFly({ toX, toY, key: last.at });
+    const id = window.setTimeout(() => setDrawFly(null), 600);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view?.log, box.w, box.h]);
+
   // Flash when the direction reverses.
   const [reversed, setReversed] = useState(false);
   const dirRef = useRef<number | null>(null);
@@ -198,20 +238,27 @@ export default function UnoTable({ matchId }: { matchId: string }) {
   function playable(card: Card): boolean {
     if (!isMyTurn || busy) return false;
     if (pending > 0) {
-      if (view!.pending_type === "draw2") return card.v === "draw2";
-      if (view!.pending_type === "wild4") return card.v === "wild4";
-      return false;
+      // Cross-stacking: any +2 or +4 may be stacked on a live draw stack.
+      return card.v === "draw2" || card.v === "wild4";
     }
     if (card.v === "wild" || card.v === "wild4") return true;
     if (card.c === color) return true;
     if (top && card.v === top.v) return true;
     return false;
   }
+  const isNumber = (v: string) => v.length === 1 && v >= "0" && v <= "9";
   function playCard(index: number) {
     const card = view!.my_hand[index];
     if (!card || !playable(card)) return;
     if (card.v === "wild" || card.v === "wild4") {
       setWildIndex(index);
+      return;
+    }
+    // Same-number multi-play: if you hold other cards of this number, let the
+    // player choose whether to lay several down together.
+    if (pending === 0 && isNumber(card.v) && (view!.my_hand ?? []).filter((c) => c.v === card.v).length > 1) {
+      setStackLead(index);
+      setStackPicked([index]);
       return;
     }
     call("uno_play", { p_match: matchId, p_index: index, p_color: null });
@@ -221,6 +268,15 @@ export default function UnoTable({ matchId }: { matchId: string }) {
     const idx = wildIndex;
     setWildIndex(null);
     call("uno_play", { p_match: matchId, p_index: idx, p_color: c });
+  }
+  function playStack() {
+    if (stackLead === null) return;
+    // server keeps the LAST index on top → put the lead (tapped) card last.
+    const ordered = [...stackPicked.filter((i) => i !== stackLead), stackLead];
+    setStackLead(null);
+    setStackPicked([]);
+    if (ordered.length === 1) call("uno_play", { p_match: matchId, p_index: ordered[0], p_color: null });
+    else call("uno_play_multi", { p_match: matchId, p_indices: ordered });
   }
 
   const idleMs = view.last_action_at ? now - new Date(view.last_action_at).getTime() : 0;
@@ -290,6 +346,7 @@ export default function UnoTable({ matchId }: { matchId: string }) {
   // centre is offset right of box-centre — the play animation lands exactly here.
   const flyTargetX = box.w * 0.5 + centerGap / 2 + centerCardW / 2;
   const flyTargetY = box.h * 0.44;
+  const drawPileX = box.w * 0.5 - centerGap / 2 - centerCardW / 2; // for the pickup animation
 
   return (
     <FadeIn className="mx-auto flex max-w-5xl flex-col gap-4">
@@ -443,6 +500,24 @@ export default function UnoTable({ matchId }: { matchId: string }) {
               )}
             </AnimatePresence>
 
+            {/* pickup animation — a card-back flies from the draw pile to whoever
+                drew (everyone sees it). */}
+            <AnimatePresence>
+              {drawFly && (
+                <motion.div
+                  key={drawFly.key}
+                  className="pointer-events-none absolute left-0 top-0 z-20"
+                  initial={{ x: drawPileX, y: flyTargetY, scale: 1, opacity: 1 }}
+                  animate={{ x: drawFly.toX, y: drawFly.toY, scale: 0.8, opacity: 0.55 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ marginLeft: -centerCardW / 2, marginTop: -centerCard / 2 }}
+                >
+                  <UnoCardBack size={centerCard} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* my hand (fanned). Playable cards lift UP with a glow — nothing is
                 dimmed/transparent. Overlap is adaptive so the whole hand always
                 fits the table, and corner indices keep every card readable even
@@ -506,7 +581,7 @@ export default function UnoTable({ matchId }: { matchId: string }) {
                 : "Game over."
               : isMyTurn
                 ? pending > 0
-                  ? `Your turn — stack a +${view.pending_type === "wild4" ? 4 : 2} or draw ${pending}.`
+                  ? `Your turn — stack a +2/+4 or draw ${pending}.`
                   : "Your turn — play a card or draw."
                 : `Waiting for @${others.find((p) => p.user_id === view.current_user_id)?.username ?? "player"}…`}
           </div>
@@ -575,6 +650,48 @@ export default function UnoTable({ matchId }: { matchId: string }) {
           </div>
         </div>
       )}
+
+      {/* same-number multi-play picker */}
+      {stackLead !== null && (() => {
+        const leadCard = (view.my_hand ?? [])[stackLead];
+        if (!leadCard) return null;
+        const sameIdx = (view.my_hand ?? []).map((c, i) => (c.v === leadCard.v ? i : -1)).filter((i) => i >= 0);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setStackLead(null); setStackPicked([]); }} />
+            <div className="relative w-full max-w-sm rounded-2xl border border-border bg-bg-card p-5 text-center shadow-card">
+              <h3 className="text-sm font-bold">Play your {leadCard.v}s</h3>
+              <p className="mt-1 text-xs text-ink-dim">Tap to add more of the same number. The tapped card stays on top (sets the colour).</p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                {sameIdx.map((i) => {
+                  const picked = stackPicked.includes(i);
+                  const isLead = i === stackLead;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        if (isLead) return; // lead always included
+                        setStackPicked((p) => (p.includes(i) ? p.filter((x) => x !== i) : [...p, i]));
+                      }}
+                      className={clsx("rounded-[14%] transition-transform", picked ? "-translate-y-1.5 ring-[3px] ring-white" : "opacity-60")}
+                    >
+                      <UnoCard card={(view.my_hand ?? [])[i]} size={62} />
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-4 flex gap-2">
+                <button onClick={() => { setStackLead(null); setStackPicked([]); }} className="btn btn-ghost flex-1">
+                  Cancel
+                </button>
+                <button onClick={playStack} disabled={busy} className="btn btn-primary flex-1">
+                  Play {stackPicked.length} card{stackPicked.length > 1 ? "s" : ""}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </FadeIn>
   );
 }
