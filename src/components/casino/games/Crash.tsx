@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Rocket } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
+import { useActiveRound } from "@/lib/casino/roundSignal";
 import { CRASH_K } from "@/lib/casino/games";
 import { celebrate } from "@/lib/casino/celebrate";
 import { formatMoney } from "@/lib/format";
@@ -28,6 +29,7 @@ export default function Crash() {
   const [display, setDisplay] = useState(1);
   const [running, setRunning] = useState(false);
   const [ended, setEnded] = useState<Ended | null>(null);
+  useActiveRound(running);
 
   const raf = useRef<number>();
   const startMs = useRef<number>(0);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
+import { useActiveRound } from "@/lib/casino/roundSignal";
 import { celebrate } from "@/lib/casino/celebrate";
 import { formatMoney } from "@/lib/format";
 import type { Card } from "@/lib/types";
@@ -40,6 +41,7 @@ export default function Blackjack() {
   const [state, setState] = useState<BjState | null>(null);
 
   const active = state?.status === "active" && !state.done;
+  useActiveRound(active);
 
   function maybeCelebrate(r: BjState) {
     if (r.done && (r.status === "won" || r.status === "blackjack")) celebrate(r.status === "blackjack");

@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Bomb, Gem } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
+import { useActiveRound } from "@/lib/casino/roundSignal";
 import { celebrate } from "@/lib/casino/celebrate";
 import { formatMoney } from "@/lib/format";
 import GameShell from "../GameShell";
@@ -28,6 +29,7 @@ export default function Mines() {
   const [ended, setEnded] = useState<null | { win: boolean; payout: number }>(null);
 
   const active = !!roundId && !ended;
+  useActiveRound(active);
 
   async function start() {
     try {

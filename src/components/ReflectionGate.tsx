@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2, Lock, PartyPopper, RotateCw } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
 import { useAuth } from "./AuthProvider";
+import { useAnyRoundActive } from "@/lib/casino/roundSignal";
 import { formatMoney } from "@/lib/format";
 
 // Responsible-play lock. When a signed-in user's net worth (cash + portfolio)
@@ -41,6 +42,9 @@ export default function ReflectionGate() {
   const { user, profile, refreshProfile } = useAuth();
   const supabase = getSupabase();
   const uid = user?.id;
+  // While a casino round is mid-play the bet has left the balance, which can look
+  // like being broke — don't lock until the game resolves.
+  const roundActive = useAnyRoundActive();
 
   const { data, refetch } = useQuery<Status>({
     queryKey: ["reflection", uid],
@@ -158,7 +162,9 @@ export default function ReflectionGate() {
     void ping();
   };
 
-  if (!uid || (!locked && !rewarded) || closed) return null;
+  // Suppress the lock while a casino round is in progress (re-evaluates when it
+  // resolves). Never suppress the reward screen.
+  if (!uid || (!locked && !rewarded) || closed || (roundActive && !rewarded)) return null;
 
   // Claim unlocks only once enough ACTUAL watch time has accrued server-side.
   const canClaim = locked && !outOfRehabs && watched >= required;

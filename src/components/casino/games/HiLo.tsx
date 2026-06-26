@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useCasino } from "@/lib/casino/useCasino";
+import { useActiveRound } from "@/lib/casino/roundSignal";
 import { celebrate } from "@/lib/casino/celebrate";
 import { formatMoney } from "@/lib/format";
 import type { Card } from "@/lib/types";
@@ -23,6 +24,7 @@ export default function HiLo() {
   const [ended, setEnded] = useState<null | { win: boolean; payout: number }>(null);
 
   const active = !!roundId && !ended;
+  useActiveRound(active);
   const rank = card?.r ?? 0;
   const hiChance = ((14 - rank) * 4) / 52;
   const loChance = (rank * 4) / 52;
