@@ -43,9 +43,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SupportWidget />
         </Providers>
         <Analytics />
-        {/* Third-party ad network (effectivecpmnetwork) */}
+        {/* Third-party ad network (highperformanceformat) */}
+        <Script id="ad-config" strategy="afterInteractive">
+          {`
+            atOptions = {
+              'key' : 'c52a16f07ce586730d804ac8f6804a35',
+              'format' : 'iframe',
+              'height' : 600,
+              'width' : 160,
+              'params' : {}
+            };
+          `}
+        </Script>
         <Script
-          src="https://pl29878153.effectivecpmnetwork.com/f3/93/a2/f393a2130893d02b1eb9aeabe85be9ca.js"
+          src="https://www.highperformanceformat.com/c52a16f07ce586730d804ac8f6804a35/invoke.js"
           strategy="afterInteractive"
         />
       </body>
