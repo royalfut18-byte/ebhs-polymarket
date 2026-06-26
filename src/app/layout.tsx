@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import Providers from "@/components/Providers";
@@ -42,6 +43,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SupportWidget />
         </Providers>
         <Analytics />
+        {/* Third-party ad network (effectivecpmnetwork) */}
+        <Script
+          src="https://pl29878153.effectivecpmnetwork.com/f3/93/a2/f393a2130893d02b1eb9aeabe85be9ca.js"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
