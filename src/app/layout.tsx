@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Inter } from "next/font/google";
-import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import Providers from "@/components/Providers";
 import Navbar from "@/components/Navbar";
 import ConfigBanner from "@/components/ConfigBanner";
 import SupportWidget from "@/components/SupportWidget";
+import AdsterraSidebar from "@/components/AdsterraSidebar";
 import AppGate from "@/components/AppGate";
 
 const inter = Inter({
@@ -41,24 +41,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </footer>
           </div>
           <SupportWidget />
+          <AdsterraSidebar />
         </Providers>
         <Analytics />
-        {/* Third-party ad network (highperformanceformat) */}
-        <Script id="ad-config" strategy="afterInteractive">
-          {`
-            atOptions = {
-              'key' : 'c52a16f07ce586730d804ac8f6804a35',
-              'format' : 'iframe',
-              'height' : 600,
-              'width' : 160,
-              'params' : {}
-            };
-          `}
-        </Script>
-        <Script
-          src="https://www.highperformanceformat.com/c52a16f07ce586730d804ac8f6804a35/invoke.js"
-          strategy="afterInteractive"
-        />
       </body>
     </html>
   );
