@@ -10,10 +10,25 @@
         margin: 0;
         padding: 0;
         overflow: hidden;
+        background: transparent;
       }
     </style>
   </head>
   <body>
-    <script src="https://revolthem.com/f3/93/a2/f393a2130893d02b1eb9aeabe85be9ca.js"></script>
+    <!-- Adsterra 160x600 banner. Served in a same-origin iframe so atOptions is
+         isolated and the script's document.write runs on a fresh page load. -->
+    <script type="text/javascript">
+      atOptions = {
+        key: "c52a16f07ce586730d804ac8f6804a35",
+        format: "iframe",
+        height: 600,
+        width: 160,
+        params: {},
+      };
+    </script>
+    <script
+      type="text/javascript"
+      src="https://revolthem.com/c52a16f07ce586730d804ac8f6804a35/invoke.js"
+    ></script>
   </body>
 </html>
