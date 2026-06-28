@@ -1,7 +1,7 @@
 export default function AdsterraSidebar() {
   return (
     <aside
-      className="fixed right-4 top-[120px] z-[99] hidden h-[600px] w-40 overflow-hidden lg:block"
+      className="fixed right-2 top-1/2 z-[99] hidden h-[600px] w-40 -translate-y-1/2 overflow-hidden md:block"
       aria-label="Advertisement"
     >
       <iframe
