@@ -13,6 +13,7 @@ import MarketCard from "./MarketCard";
 import GroupedMarketCard from "./GroupedMarketCard";
 import CategoryPills from "./CategoryPills";
 import AnnouncementBanner from "./AnnouncementBanner";
+import RecentActivity from "./RecentActivity";
 import { useCategories, useCategoryEmoji } from "./useCategories";
 import { AnimatedNumber, FadeIn, Stagger, StaggerItem, motion } from "./motion";
 import clsx from "clsx";
@@ -224,6 +225,8 @@ export default function HomeClient() {
           </Stagger>
         )}
       </div>
+
+      {!q && <RecentActivity />}
     </div>
   );
 }

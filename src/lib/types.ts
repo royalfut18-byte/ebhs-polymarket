@@ -206,3 +206,22 @@ export interface CasinoBet {
   result: Record<string, unknown> | null;
   created_at: string;
 }
+
+// A server-wide activity-feed entry (recent_activity RPC). Usernames only.
+export interface ActivityItem {
+  kind: "casino" | "trade" | "arena";
+  at: string;
+  username: string;
+  // casino
+  game?: string;
+  bet?: number;
+  payout?: number;
+  won?: boolean;
+  // trade
+  side?: "buy" | "sell";
+  outcome?: string; // yes/no (trade) or win/loss/draw (arena)
+  shares?: number;
+  market?: string;
+  // arena
+  pot?: number;
+}

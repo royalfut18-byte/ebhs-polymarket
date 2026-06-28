@@ -3,6 +3,7 @@
 
 import { getSupabase } from "./supabase/client";
 import type {
+  ActivityItem,
   AdminMessage,
   CasinoBet,
   CasinoGame,
@@ -260,4 +261,12 @@ export async function fetchMarketSuggestions(): Promise<MarketSuggestion[]> {
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data as unknown as MarketSuggestion[]) ?? [];
+}
+
+// Server-wide recent activity feed (recent_activity RPC). Usernames only.
+export async function fetchRecentActivity(limit = 10): Promise<ActivityItem[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.rpc("recent_activity", { p_limit: limit });
+  if (error) throw error;
+  return (data as ActivityItem[]) ?? [];
 }
