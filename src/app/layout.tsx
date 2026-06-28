@@ -32,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Navbar />
             </Suspense>
             <ConfigBanner />
-            <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
+            <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 min-[1200px]:pr-[200px]">
               <AppGate>{children}</AppGate>
             </main>
             <footer className="mt-10 border-t border-border px-4 py-8 text-center text-xs text-ink-faint">

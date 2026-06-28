@@ -1,11 +1,10 @@
 export default function AdsterraSidebar() {
   return (
-    // The page content is centred at max-w-7xl (1280px). Only show the 160px
-    // banner once the viewport is wide enough for it to sit in the right gutter
-    // WITHOUT overlapping content (~1640px+); below that it's hidden so it never
-    // covers the UI/games.
+    // Shown from 1200px wide. At that point the page content reserves a right
+    // gutter (see <main> in layout.tsx), so the banner sits cleanly in it and
+    // never overlaps the UI — and it shows at normal 100% zoom on laptops.
     <aside
-      className="fixed right-3 top-1/2 z-[40] hidden h-[600px] w-40 -translate-y-1/2 overflow-hidden min-[1640px]:block"
+      className="fixed right-3 top-1/2 z-[40] hidden h-[600px] w-40 -translate-y-1/2 overflow-hidden min-[1200px]:block"
       aria-label="Advertisement"
     >
       <iframe
