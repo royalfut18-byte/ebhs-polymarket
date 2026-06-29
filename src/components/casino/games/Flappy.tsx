@@ -331,7 +331,7 @@ export default function Flappy() {
       game="flappy"
       controls={
         <>
-          <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={live || busy} />
+          <BetAmount amount={amount} setAmount={setAmount} balance={profile?.balance ?? 0} disabled={live || busy} max={100} />
 
           {live ? (
             <button

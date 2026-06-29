@@ -10,18 +10,29 @@ export default function BetAmount({
   balance,
   disabled,
   label = "Bet amount",
+  max,
 }: {
   amount: number;
   setAmount: (n: number) => void;
   balance: number;
   disabled?: boolean;
   label?: string;
+  /** Optional per-game max bet. When set, the field + quick buttons can't exceed it. */
+  max?: number;
 }) {
-  const clamp = (n: number) => Math.max(0, Math.round(n * 100) / 100);
+  const clamp = (n: number) => {
+    const v = Math.max(0, Math.round(n * 100) / 100);
+    return max != null ? Math.min(v, max) : v;
+  };
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-semibold uppercase tracking-wide text-ink-faint">{label}</label>
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-semibold uppercase tracking-wide text-ink-faint">{label}</label>
+        {max != null && (
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">Max ${max}</span>
+        )}
+      </div>
       <div className="flex items-stretch gap-1.5">
         <div className="relative flex-1">
           <Coins
@@ -32,6 +43,7 @@ export default function BetAmount({
             type="number"
             inputMode="decimal"
             min={0}
+            max={max}
             step="0.01"
             value={Number.isFinite(amount) ? amount : 0}
             disabled={disabled}
