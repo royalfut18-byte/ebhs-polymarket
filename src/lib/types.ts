@@ -193,7 +193,8 @@ export type CasinoGame =
   | "blackjack"
   | "baccarat"
   | "hilo"
-  | "plinko";
+  | "plinko"
+  | "flappy";
 
 // A completed bet, logged for the player's history (casino_bets table).
 export interface CasinoBet {
