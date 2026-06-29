@@ -11,11 +11,11 @@ import BetAmount from "../BetAmount";
 import clsx from "clsx";
 
 // Multiplier after passing N pipes — mirrors _flappy_mult() on the server (the
-// server is the source of truth). House-edge curve 0.95 / 0.88^pipes: the server
-// rolls a hidden "bust pipe" (per-pipe survival 0.88) so the expected return is a
-// flat 0.95 at every cash-out point — uncapped (1000x safety ceiling ~pipe 54),
-// and a fabricated pipe count just busts against the hidden point.
-export const flappyMult = (pipes: number) => Math.min(Math.round((0.95 / Math.pow(0.88, Math.max(0, pipes))) * 100) / 100, 1000);
+// server is the source of truth for the payout; this is just for live display).
+// Rake curve: starts at 0.5x and grows gently, so you're underwater until ~7
+// pipes and only a real run turns a profit. Capped at 10x to bound how much a
+// skilled/scripted player can farm.
+export const flappyMult = (pipes: number) => Math.min(Math.round(0.5 * Math.pow(1.12, Math.max(0, pipes)) * 100) / 100, 10);
 
 type Phase = "idle" | "ready" | "playing" | "crashed" | "cashed";
 
@@ -66,14 +66,6 @@ export default function Flappy() {
   const settling = useRef(false);
   const phaseRef = useRef<Phase>(phase);
   phaseRef.current = phase;
-
-  // Server-authoritative pipe tracking: each pipe the bird passes is confirmed by
-  // the server, which decides (against a hidden bust pipe) whether you survive it.
-  // Cash-out pays the server's CONFIRMED count, so it can never bust on cash-out.
-  const serverPipesRef = useRef(0); // pipes the server has confirmed safe
-  const serverBustRef = useRef(false); // server said this pipe is the hidden gap
-  const advanceLock = useRef(false); // serialises the per-pipe confirmation calls
-  const pendingPipes = useRef(0); // pipes passed locally, awaiting confirmation
 
   const g = useRef<GameState>({
     birdY: 0, vy: 0, rot: 0, wing: 0, pipes: [], spawnX: 0, score: 0, groundX: 0, cloudX: 0, shake: 0, t: 0,
@@ -141,13 +133,6 @@ export default function Flappy() {
       st.wing = Math.max(0, st.wing - dt * 4);
       if (st.shake > 0) st.shake = Math.max(0, st.shake - dt * 4);
 
-      // Server said the bird hit the hidden gap — crash it (the round is already
-      // settled server-side by the pipe-confirm call).
-      if (serverBustRef.current && phaseRef.current === "playing") {
-        serverBustRef.current = false;
-        serverBust();
-      }
-
       if (phaseRef.current === "playing" && w > 0) {
         const G = h * 2.4; // gravity
         st.vy += G * dt;
@@ -176,8 +161,7 @@ export default function Flappy() {
           if (!p.passed && p.x + pipeW < birdX) {
             p.passed = true;
             st.score += 1;
-            pendingPipes.current += 1; // confirm this pipe with the server
-            void drainAdvances();
+            setPipes(st.score);
           }
           // collision
           if (birdX + R > p.x && birdX - R < p.x + pipeW) {
@@ -216,10 +200,6 @@ export default function Flappy() {
       const r = await play<{ round_id: string }>("casino_flappy_start", { p_bet: amount }, { defer: true });
       roundRef.current = r.round_id;
       settling.current = false;
-      serverPipesRef.current = 0;
-      serverBustRef.current = false;
-      pendingPipes.current = 0;
-      advanceLock.current = false;
       const { h } = sizeRef.current;
       g.current = { birdY: h * 0.45, vy: -h * 0.3, rot: 0, wing: 1, pipes: [], spawnX: h * 0.4, score: 0, groundX: 0, cloudX: g.current.cloudX, shake: 0, t: 0 };
       setPipes(0);
@@ -229,77 +209,32 @@ export default function Flappy() {
       /* surfaced by hook */
     }
   }
-
-  // Confirm passed pipes with the server one at a time (the server checks each
-  // against the hidden bust pipe). Serialised so the count can't race.
-  async function drainAdvances() {
-    if (advanceLock.current) return;
-    advanceLock.current = true;
-    try {
-      while (pendingPipes.current > 0 && phaseRef.current === "playing" && !settling.current && roundRef.current) {
-        pendingPipes.current -= 1;
-        const r = await play<{ status: "safe" | "bust"; pipes: number; multiplier: number }>(
-          "casino_flappy_pipe",
-          { p_round: roundRef.current },
-          { defer: true, allowConcurrent: true }
-        );
-        if (r.status === "bust") {
-          serverBustRef.current = true; // the game loop crashes the bird
-          break;
-        }
-        serverPipesRef.current = r.pipes;
-        setPipes(r.pipes);
-      }
-    } catch {
-      /* transient — stop draining; cash-out / next round reconciles */
-    } finally {
-      advanceLock.current = false;
-    }
-  }
-
-  // The bird hit the hidden gap (server already settled the loss on the pipe
-  // call). UI only — no further RPC.
-  function serverBust() {
-    if (settling.current) return;
-    settling.current = true;
-    g.current.shake = 1;
-    setPhase("crashed");
-    phaseRef.current = "crashed";
-    refreshProfile();
-    setResult({ kind: "crash", mult: 0, payout: 0, pipes: serverPipesRef.current, bet: amount });
-    roundRef.current = null;
-  }
-
   async function cashout() {
     if (phaseRef.current !== "playing" && phaseRef.current !== "ready") return;
     const round = roundRef.current;
     if (!round || settling.current) return;
     settling.current = true;
+    const p = g.current.score;
     setPhase("cashed");
     phaseRef.current = "cashed";
     try {
-      // Server pays its OWN confirmed pipe count, so cash-out can never bust.
-      const r = await play<{ status: string; pipes: number; multiplier: number; payout: number }>(
+      const r = await play<{ pipes: number; multiplier: number; payout: number }>(
         "casino_flappy_cashout",
-        { p_round: round, p_pipes: serverPipesRef.current },
+        { p_round: round, p_pipes: p },
         { defer: true }
       );
       refreshProfile();
       setResult({ kind: "cash", mult: r.multiplier, payout: r.payout, pipes: r.pipes, bet: amount });
+      // Only celebrate a net win — a sub-1× cash-out pays out but is a loss.
       if (r.multiplier > 1) celebrate(r.multiplier >= 5);
     } catch {
-      // Rare race: a pipe-confirm busted the round first. Reflect the crash.
-      setPhase("crashed");
-      phaseRef.current = "crashed";
-      setResult({ kind: "crash", mult: 0, payout: 0, pipes: serverPipesRef.current, bet: amount });
+      /* surfaced */
     } finally {
       roundRef.current = null;
       settling.current = false; // round is settled — let the player start a new one
     }
   }
-
-  // Skill crash: the bird flew into a pipe before the hidden gap. Forfeit the bet.
-  async function crash(_score: number) {
+  async function crash(score: number) {
     if (settling.current) return;
     settling.current = true;
     g.current.shake = 1;
@@ -307,9 +242,9 @@ export default function Flappy() {
     phaseRef.current = "crashed";
     const round = roundRef.current;
     try {
-      if (round) await play("casino_flappy_lose", { p_round: round, p_pipes: serverPipesRef.current }, { defer: true });
+      if (round) await play("casino_flappy_lose", { p_round: round, p_pipes: score }, { defer: true });
       refreshProfile();
-      setResult({ kind: "crash", mult: 0, payout: 0, pipes: serverPipesRef.current, bet: amount });
+      setResult({ kind: "crash", mult: 0, payout: 0, pipes: score, bet: amount });
     } catch {
       /* surfaced */
     } finally {
@@ -457,8 +392,8 @@ export default function Flappy() {
             );
           })()}
           <p className="text-center text-[11px] text-ink-faint">
-            Tap or press Space to flap. The multiplier climbs every pipe — but a hidden gap
-            closes somewhere ahead, so cash out before you push too far.
+            Tap or press Space to flap. You&apos;re underwater until ~7 pipes — fly past them and
+            cash out before you crash.
           </p>
           {error && <p className="text-center text-sm text-no-text">{error}</p>}
         </>
