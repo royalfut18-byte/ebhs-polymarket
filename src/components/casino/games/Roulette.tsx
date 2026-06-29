@@ -69,7 +69,8 @@ export default function Roulette() {
         setSpinning(false);
         setRevealed(true);
         settle(); // now reveal balance + recent results
-        if (r.payout > 0) celebrate(r.payout >= r.total * 5);
+        // payout is the gross return across all chips — only a net win celebrates.
+        if (r.payout > r.total) celebrate(r.payout >= r.total * 5);
       }, 4200);
     } catch {
       /* surfaced by hook */
@@ -156,8 +157,17 @@ export default function Roulette() {
               >
                 {result.spin}
               </span>
-              <span className={clsx("text-sm font-semibold", result.payout > 0 ? "text-yes-text" : "text-no-text")}>
-                {result.payout > 0 ? `Won ${formatMoney(result.payout)}` : "No win this spin"}
+              <span
+                className={clsx(
+                  "text-sm font-semibold",
+                  result.payout > result.total ? "text-yes-text" : result.payout > 0 ? "text-amber-300" : "text-no-text"
+                )}
+              >
+                {result.payout > result.total
+                  ? `Won ${formatMoney(result.payout)}`
+                  : result.payout > 0
+                    ? `Returned ${formatMoney(result.payout)} of ${formatMoney(result.total)}`
+                    : "No win this spin"}
               </span>
             </div>
           )}

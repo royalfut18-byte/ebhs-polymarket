@@ -83,15 +83,22 @@ export default function Baccarat() {
 
         <div className="text-center">
           {result ? (
-            <div
-              className={clsx(
-                "inline-block rounded-xl px-4 py-2 text-sm font-semibold",
-                result.payout > 0 ? "bg-yes/15 text-yes-text" : "bg-no/15 text-no-text"
-              )}
-            >
-              {result.winner === "tie" ? "Tie" : `${result.winner === "player" ? "Player" : "Banker"} wins`} ·{" "}
-              {result.payout > 0 ? `+${formatMoney(result.payout)}` : "you lose"}
-            </div>
+            (() => {
+              // multiplier: 0 = lose, 1 = push (tie when on player/banker), >1 = win
+              const win = result.multiplier > 1;
+              const push = result.multiplier === 1;
+              return (
+                <div
+                  className={clsx(
+                    "inline-block rounded-xl px-4 py-2 text-sm font-semibold",
+                    win ? "bg-yes/15 text-yes-text" : push ? "bg-white/[0.06] text-ink-dim" : "bg-no/15 text-no-text"
+                  )}
+                >
+                  {result.winner === "tie" ? "Tie" : `${result.winner === "player" ? "Player" : "Banker"} wins`} ·{" "}
+                  {win ? `+${formatMoney(result.payout)}` : push ? "push — stake returned" : "you lose"}
+                </div>
+              );
+            })()
           ) : (
             <p className="text-sm text-ink-faint">Pick a side and deal</p>
           )}

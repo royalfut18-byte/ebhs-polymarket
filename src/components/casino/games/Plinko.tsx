@@ -31,6 +31,7 @@ interface PlinkoResult {
 interface Ball {
   id: number;
   result: PlinkoResult;
+  bet: number; // the stake at drop time — bets can change while balls are in flight
 }
 
 // Board geometry (SVG units). The viewBox scales to fit the canvas width.
@@ -52,7 +53,7 @@ export default function Plinko() {
   const [balls, setBalls] = useState<Ball[]>([]);
   // Buckets that should flash because a ball just landed in them.
   const [flashes, setFlashes] = useState<{ id: number; bucket: number }[]>([]);
-  const [lastResult, setLastResult] = useState<PlinkoResult | null>(null);
+  const [lastResult, setLastResult] = useState<(PlinkoResult & { bet: number }) | null>(null);
   const seq = useRef(0);
 
   const multipliers = useMemo(() => plinkoMultipliers(risk, rows), [risk, rows]);
@@ -102,7 +103,7 @@ export default function Plinko() {
         { allowConcurrent: true }
       );
       const id = (seq.current += 1);
-      setBalls((b) => [...b, { id, result: { ...r, path: r.path.map(Number) } }]);
+      setBalls((b) => [...b, { id, result: { ...r, path: r.path.map(Number) }, bet: amount }]);
     } catch {
       /* error surfaced by hook */
     }
@@ -110,7 +111,7 @@ export default function Plinko() {
 
   function onSettled(ball: Ball) {
     setBalls((b) => b.filter((x) => x.id !== ball.id));
-    setLastResult(ball.result);
+    setLastResult({ ...ball.result, bet: ball.bet });
     const fid = (seq.current += 1);
     setFlashes((f) => [...f, { id: fid, bucket: ball.result.bucket }]);
     window.setTimeout(() => setFlashes((f) => f.filter((x) => x.id !== fid)), 450);
@@ -176,7 +177,7 @@ export default function Plinko() {
               {lastResult.multiplier.toFixed(lastResult.multiplier >= 100 ? 0 : 2)}× —{" "}
               {lastResult.win
                 ? `Won ${formatMoney(lastResult.payout)}`
-                : `Lost ${formatMoney(amount - lastResult.payout)}`}
+                : `Lost ${formatMoney(lastResult.bet - lastResult.payout)}`}
             </div>
           )}
           {error && <p className="text-center text-sm text-no-text">{error}</p>}

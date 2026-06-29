@@ -21,16 +21,19 @@ export default function RecentResults({ game }: { game: CasinoGame }) {
     <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
       <span className="shrink-0 text-xs font-medium uppercase tracking-wide text-ink-faint">Recent</span>
       {data.map((b) => {
-        const won = b.payout > 0;
+        // Colour by NET result, not just any return: a sub-1× cash-out (Flappy
+        // rake / low Plinko buckets) pays out > 0 but is still a net loss.
+        const lostAll = b.payout <= 0;
+        const netWin = b.payout > b.bet;
         return (
           <span
             key={b.id}
             className={clsx(
               "shrink-0 rounded-lg px-2 py-1 text-xs font-bold tabular-nums",
-              won ? "bg-yes/15 text-yes-text" : "bg-no/15 text-no-text"
+              netWin ? "bg-yes/15 text-yes-text" : lostAll ? "bg-no/15 text-no-text" : "bg-amber-500/15 text-amber-300"
             )}
           >
-            {won ? `${b.multiplier.toFixed(2)}×` : "✕"}
+            {lostAll ? "✕" : `${b.multiplier.toFixed(2)}×`}
           </span>
         );
       })}

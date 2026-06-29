@@ -54,7 +54,7 @@ export default function Flappy() {
   const [amount, setAmount] = useState(10);
   const [phase, setPhase] = useState<Phase>("idle");
   const [pipes, setPipes] = useState(0);
-  const [result, setResult] = useState<{ win: boolean; mult: number; payout: number; pipes: number } | null>(null);
+  const [result, setResult] = useState<{ kind: "crash" | "cash"; mult: number; payout: number; pipes: number; bet: number } | null>(null);
   useActiveRound(phase === "playing" || phase === "ready");
 
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -223,8 +223,9 @@ export default function Flappy() {
         { defer: true }
       );
       refreshProfile();
-      setResult({ win: true, mult: r.multiplier, payout: r.payout, pipes: r.pipes });
-      if (r.payout > 0) celebrate(r.multiplier >= 5);
+      setResult({ kind: "cash", mult: r.multiplier, payout: r.payout, pipes: r.pipes, bet: amount });
+      // Only celebrate a net win — a sub-1× cash-out pays out but is a loss.
+      if (r.multiplier > 1) celebrate(r.multiplier >= 5);
     } catch {
       /* surfaced */
     } finally {
@@ -242,7 +243,7 @@ export default function Flappy() {
     try {
       if (round) await play("casino_flappy_lose", { p_round: round, p_pipes: score }, { defer: true });
       refreshProfile();
-      setResult({ win: false, mult: 0, payout: 0, pipes: score });
+      setResult({ kind: "crash", mult: 0, payout: 0, pipes: score, bet: amount });
     } catch {
       /* surfaced */
     } finally {
@@ -366,20 +367,29 @@ export default function Flappy() {
             </div>
           </div>
 
-          <div
-            className={clsx(
-              "rounded-xl px-3 py-2 text-center text-sm font-semibold",
-              !result && "invisible",
-              result?.win && "bg-yes/15 text-yes-text",
-              result && !result.win && "bg-no/15 text-no-text"
-            )}
-          >
-            {result?.win
-              ? `Cashed @ ${result.mult.toFixed(2)}× · +${formatMoney(result.payout)} 🎉`
-              : result
-                ? `Crashed at ${result.pipes} pipe${result.pipes === 1 ? "" : "s"} — lost ${formatMoney(amount)}`
-                : " "}
-          </div>
+          {(() => {
+            const netWin = !!result && result.kind === "cash" && result.payout > result.bet;
+            const partial = !!result && result.kind === "cash" && !netWin; // cashed below 1× — a net loss
+            return (
+              <div
+                className={clsx(
+                  "rounded-xl px-3 py-2 text-center text-sm font-semibold",
+                  !result && "invisible",
+                  netWin && "bg-yes/15 text-yes-text",
+                  partial && "bg-amber-500/15 text-amber-300",
+                  result?.kind === "crash" && "bg-no/15 text-no-text"
+                )}
+              >
+                {!result
+                  ? " "
+                  : result.kind === "crash"
+                    ? `Crashed at ${result.pipes} pipe${result.pipes === 1 ? "" : "s"} — lost ${formatMoney(result.bet)}`
+                    : netWin
+                      ? `Cashed @ ${result.mult.toFixed(2)}× · +${formatMoney(result.payout)} 🎉`
+                      : `Cashed @ ${result.mult.toFixed(2)}× · ${formatMoney(result.payout)} back, lost ${formatMoney(result.bet - result.payout)}`}
+              </div>
+            );
+          })()}
           <p className="text-center text-[11px] text-ink-faint">
             Tap or press Space to flap. You&apos;re underwater until ~7 pipes — fly past them and
             cash out before you crash.

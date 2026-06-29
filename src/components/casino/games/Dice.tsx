@@ -27,6 +27,7 @@ export default function Dice() {
   const [target, setTarget] = useState(50);
   const [over, setOver] = useState(true);
   const [result, setResult] = useState<DiceResult | null>(null);
+  const [rollSeq, setRollSeq] = useState(0); // bumps once per roll to re-trigger the number animation
 
   const chance = over ? 100 - target : target;
   const multiplier = 99 / Math.max(chance, 0.01);
@@ -39,6 +40,7 @@ export default function Dice() {
         p_over: over,
       });
       setResult(r);
+      setRollSeq((n) => n + 1);
       if (r.win) celebrate(r.multiplier >= 5);
     } catch {
       /* error surfaced by hook */
@@ -102,7 +104,7 @@ export default function Dice() {
       <div className="flex h-full flex-col justify-center gap-8">
         <div className="text-center">
           <motion.div
-            key={result ? `${result.roll}-${Math.random()}` : "idle"}
+            key={result ? rollSeq : "idle"}
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className={clsx(
