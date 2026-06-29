@@ -12,7 +12,9 @@ import clsx from "clsx";
 
 // Multiplier after passing N pipes — mirrors _flappy_mult() on the server (the
 // server is the source of truth for the payout; this is just for live display).
-export const flappyMult = (pipes: number) => Math.min(Math.round(Math.pow(1.14, Math.max(0, pipes)) * 100) / 100, 50);
+// Rake curve: starts at 0.5x and grows gently, so you're underwater until ~7
+// pipes and only a real run turns a profit. Capped at 10x.
+export const flappyMult = (pipes: number) => Math.min(Math.round(0.5 * Math.pow(1.12, Math.max(0, pipes)) * 100) / 100, 10);
 
 type Phase = "idle" | "ready" | "playing" | "crashed" | "cashed";
 
@@ -322,6 +324,7 @@ export default function Flappy() {
 
   const mult = phase === "playing" || phase === "ready" ? flappyMult(pipes) : result?.mult ?? 1;
   const live = phase === "playing" || phase === "ready";
+  const inProfit = mult >= 1; // below 1x you'd cash out for less than your bet
 
   return (
     <GameShell
@@ -334,9 +337,13 @@ export default function Flappy() {
             <button
               onClick={cashout}
               className="btn py-3 text-base font-bold"
-              style={{ background: "linear-gradient(90deg,#22c55e,#16a34a)", color: "#04120a" }}
+              style={
+                inProfit
+                  ? { background: "linear-gradient(90deg,#22c55e,#16a34a)", color: "#04120a" }
+                  : { background: "linear-gradient(90deg,#b45309,#92400e)", color: "#fff7ed" }
+              }
             >
-              Cash out {formatMoney(amount * flappyMult(pipes))}
+              Cash out {mult.toFixed(2)}× · {formatMoney(amount * mult)}
             </button>
           ) : (
             <button onClick={start} disabled={busy || !profile} className="btn btn-primary py-3 text-base">
@@ -351,7 +358,9 @@ export default function Flappy() {
             </div>
             <div className="rounded-xl border border-border bg-bg-soft/50 px-3 py-2">
               <div className="text-[10px] uppercase tracking-wide text-ink-faint">Multiplier</div>
-              <div className="text-lg font-bold tabular-nums text-lime-300">{mult.toFixed(2)}×</div>
+              <div className={clsx("text-lg font-bold tabular-nums", inProfit ? "text-lime-300" : "text-amber-400")}>
+                {mult.toFixed(2)}×
+              </div>
             </div>
           </div>
 
@@ -370,7 +379,8 @@ export default function Flappy() {
                 : " "}
           </div>
           <p className="text-center text-[11px] text-ink-faint">
-            Tap the board or press Space to flap. Cash out before you crash.
+            Tap or press Space to flap. You&apos;re underwater until ~7 pipes — fly past them and
+            cash out before you crash.
           </p>
           {error && <p className="text-center text-sm text-no-text">{error}</p>}
         </>
@@ -385,10 +395,15 @@ export default function Flappy() {
         className="relative h-[420px] w-full cursor-pointer touch-none overflow-hidden rounded-xl"
       >
         <canvas ref={canvasRef} className="block h-full w-full" />
-        {/* live multiplier overlay */}
+        {/* live multiplier overlay — amber while underwater, white once in profit */}
         {live && (
-          <div className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-5xl font-black text-white drop-shadow-[0_3px_10px_rgba(0,0,0,0.5)]">
-            {flappyMult(pipes).toFixed(2)}×
+          <div
+            className={clsx(
+              "pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-5xl font-black drop-shadow-[0_3px_10px_rgba(0,0,0,0.5)]",
+              inProfit ? "text-white" : "text-amber-300"
+            )}
+          >
+            {mult.toFixed(2)}×
           </div>
         )}
         {phase === "ready" && (
