@@ -59,6 +59,12 @@ export default function Flappy() {
   });
   // The loop is set up once, so it must call the LATEST crash closure via a ref.
   const crashRef = useRef<(s: number) => void>(() => {});
+  // Cached canvas gradients — rebuilt only when the size changes, never per
+  // frame. Recreating gradients every frame churns the GC and causes stutter.
+  const gfx = useRef<{
+    h: number; pipeW: number; r: number;
+    sky: CanvasGradient | null; pipe: CanvasGradient | null; bird: CanvasGradient | null;
+  }>({ h: 0, pipeW: 0, r: 0, sky: null, pipe: null, bird: null });
 
   // ---- sizing (retina) ----
   useEffect(() => {
@@ -68,7 +74,7 @@ export default function Flappy() {
     const ro = new ResizeObserver(() => {
       const w = wrap.clientWidth;
       const h = wrap.clientHeight;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
       const ctx = canvas.getContext("2d");
@@ -150,7 +156,8 @@ export default function Flappy() {
             }
           }
         }
-        st.pipes = st.pipes.filter((p) => p.x + pipeW > -10);
+        // drop off-screen pipes in place (no per-frame array allocation)
+        while (st.pipes.length > 0 && st.pipes[0].x + pipeW <= -10) st.pipes.shift();
 
         // ground / ceiling
         const groundY = h - h * 0.12;
@@ -239,14 +246,31 @@ export default function Flappy() {
     const { w, h } = sizeRef.current;
     if (w === 0) return;
     const st = g.current;
+    const pipeW = w * 0.12;
+    const R = Math.max(9, h * 0.035);
+
+    // (re)build the cached gradients only when the size actually changes
+    const gx = gfx.current;
+    if (gx.h !== h || gx.pipeW !== pipeW || gx.r !== R) {
+      const sky = ctx.createLinearGradient(0, 0, 0, h);
+      sky.addColorStop(0, "#4ec0f0");
+      sky.addColorStop(1, "#bde0ff");
+      const pipe = ctx.createLinearGradient(0, 0, pipeW, 0);
+      pipe.addColorStop(0, "#5bbd2e");
+      pipe.addColorStop(0.5, "#8ed94f");
+      pipe.addColorStop(1, "#4a9c25");
+      const bird = ctx.createRadialGradient(-R * 0.3, -R * 0.3, R * 0.2, 0, 0, R * 1.3);
+      bird.addColorStop(0, "#ffe24a");
+      bird.addColorStop(1, "#f5b400");
+      gx.sky = sky; gx.pipe = pipe; gx.bird = bird;
+      gx.h = h; gx.pipeW = pipeW; gx.r = R;
+    }
+
     ctx.save();
     if (st.shake > 0) ctx.translate((Math.random() - 0.5) * st.shake * 10, (Math.random() - 0.5) * st.shake * 10);
 
     // sky
-    const sky = ctx.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, "#4ec0f0");
-    sky.addColorStop(1, "#bde0ff");
-    ctx.fillStyle = sky;
+    ctx.fillStyle = gx.sky!;
     ctx.fillRect(0, 0, w, h);
 
     // parallax clouds
@@ -258,12 +282,14 @@ export default function Flappy() {
     }
 
     const groundY = h - h * 0.12;
-    const pipeW = w * 0.12;
 
-    // pipes
+    // pipes (one cached gradient reused for every pipe via translate)
     for (const p of st.pipes) {
-      drawPipe(ctx, p.x, pipeW, 0, p.gapY - p.gapH / 2);
-      drawPipe(ctx, p.x, pipeW, p.gapY + p.gapH / 2, groundY);
+      ctx.save();
+      ctx.translate(p.x, 0);
+      drawPipe(ctx, pipeW, 0, p.gapY - p.gapH / 2, gx.pipe!);
+      drawPipe(ctx, pipeW, p.gapY + p.gapH / 2, groundY, gx.pipe!);
+      ctx.restore();
     }
 
     // ground
@@ -275,7 +301,7 @@ export default function Flappy() {
     for (let x = st.groundX; x < w; x += 40) ctx.fillRect(x, groundY + h * 0.02, 20, h * 0.1);
 
     // bird
-    drawBird(ctx, w * 0.3, st.birdY, st.rot, st.wing, Math.max(9, h * 0.035), phaseRef.current);
+    drawBird(ctx, w * 0.3, st.birdY, st.rot, st.wing, R, phaseRef.current, gx.bird!);
 
     ctx.restore();
   }
@@ -383,35 +409,30 @@ function cloud(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
   ctx.fill();
 }
 
-function drawPipe(ctx: CanvasRenderingContext2D, x: number, w: number, top: number, bottom: number) {
+// Drawn at local x=0 — the caller translates to the pipe's x so a single
+// cached gradient can be reused for every pipe.
+function drawPipe(ctx: CanvasRenderingContext2D, w: number, top: number, bottom: number, body: CanvasGradient) {
   if (bottom <= top) return;
-  const body = ctx.createLinearGradient(x, 0, x + w, 0);
-  body.addColorStop(0, "#5bbd2e");
-  body.addColorStop(0.5, "#8ed94f");
-  body.addColorStop(1, "#4a9c25");
   ctx.fillStyle = body;
-  ctx.fillRect(x, top, w, bottom - top);
+  ctx.fillRect(0, top, w, bottom - top);
   ctx.strokeStyle = "#3c7a1d";
   ctx.lineWidth = 2;
-  ctx.strokeRect(x, top, w, bottom - top);
+  ctx.strokeRect(0, top, w, bottom - top);
   // cap (at the gap end)
   const capH = Math.min(18, w * 0.5);
   const capW = w + 8;
   const capY = top === 0 ? bottom - capH : top;
   ctx.fillStyle = body;
-  ctx.fillRect(x - 4, capY, capW, capH);
-  ctx.strokeRect(x - 4, capY, capW, capH);
+  ctx.fillRect(-4, capY, capW, capH);
+  ctx.strokeRect(-4, capY, capW, capH);
 }
 
-function drawBird(ctx: CanvasRenderingContext2D, x: number, y: number, rot: number, wing: number, r: number, phase: Phase) {
+function drawBird(ctx: CanvasRenderingContext2D, x: number, y: number, rot: number, wing: number, r: number, phase: Phase, body: CanvasGradient) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(phase === "crashed" ? 1.2 : rot);
   // body
-  const g = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.2, 0, 0, r * 1.3);
-  g.addColorStop(0, "#ffe24a");
-  g.addColorStop(1, "#f5b400");
-  ctx.fillStyle = g;
+  ctx.fillStyle = body;
   ctx.beginPath();
   ctx.ellipse(0, 0, r * 1.15, r, 0, 0, Math.PI * 2);
   ctx.fill();
