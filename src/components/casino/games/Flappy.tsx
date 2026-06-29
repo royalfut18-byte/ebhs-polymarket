@@ -67,6 +67,14 @@ export default function Flappy() {
   const phaseRef = useRef<Phase>(phase);
   phaseRef.current = phase;
 
+  // Server-authoritative pipe tracking: each pipe the bird passes is confirmed by
+  // the server, which decides (against a hidden bust pipe) whether you survive it.
+  // Cash-out pays the server's CONFIRMED count, so it can never bust on cash-out.
+  const serverPipesRef = useRef(0); // pipes the server has confirmed safe
+  const serverBustRef = useRef(false); // server said this pipe is the hidden gap
+  const advanceLock = useRef(false); // serialises the per-pipe confirmation calls
+  const pendingPipes = useRef(0); // pipes passed locally, awaiting confirmation
+
   const g = useRef<GameState>({
     birdY: 0, vy: 0, rot: 0, wing: 0, pipes: [], spawnX: 0, score: 0, groundX: 0, cloudX: 0, shake: 0, t: 0,
   });
@@ -133,6 +141,13 @@ export default function Flappy() {
       st.wing = Math.max(0, st.wing - dt * 4);
       if (st.shake > 0) st.shake = Math.max(0, st.shake - dt * 4);
 
+      // Server said the bird hit the hidden gap — crash it (the round is already
+      // settled server-side by the pipe-confirm call).
+      if (serverBustRef.current && phaseRef.current === "playing") {
+        serverBustRef.current = false;
+        serverBust();
+      }
+
       if (phaseRef.current === "playing" && w > 0) {
         const G = h * 2.4; // gravity
         st.vy += G * dt;
@@ -161,7 +176,8 @@ export default function Flappy() {
           if (!p.passed && p.x + pipeW < birdX) {
             p.passed = true;
             st.score += 1;
-            setPipes(st.score);
+            pendingPipes.current += 1; // confirm this pipe with the server
+            void drainAdvances();
           }
           // collision
           if (birdX + R > p.x && birdX - R < p.x + pipeW) {
@@ -200,6 +216,10 @@ export default function Flappy() {
       const r = await play<{ round_id: string }>("casino_flappy_start", { p_bet: amount }, { defer: true });
       roundRef.current = r.round_id;
       settling.current = false;
+      serverPipesRef.current = 0;
+      serverBustRef.current = false;
+      pendingPipes.current = 0;
+      advanceLock.current = false;
       const { h } = sizeRef.current;
       g.current = { birdY: h * 0.45, vy: -h * 0.3, rot: 0, wing: 1, pipes: [], spawnX: h * 0.4, score: 0, groundX: 0, cloudX: g.current.cloudX, shake: 0, t: 0 };
       setPipes(0);
@@ -209,39 +229,77 @@ export default function Flappy() {
       /* surfaced by hook */
     }
   }
+
+  // Confirm passed pipes with the server one at a time (the server checks each
+  // against the hidden bust pipe). Serialised so the count can't race.
+  async function drainAdvances() {
+    if (advanceLock.current) return;
+    advanceLock.current = true;
+    try {
+      while (pendingPipes.current > 0 && phaseRef.current === "playing" && !settling.current && roundRef.current) {
+        pendingPipes.current -= 1;
+        const r = await play<{ status: "safe" | "bust"; pipes: number; multiplier: number }>(
+          "casino_flappy_pipe",
+          { p_round: roundRef.current },
+          { defer: true, allowConcurrent: true }
+        );
+        if (r.status === "bust") {
+          serverBustRef.current = true; // the game loop crashes the bird
+          break;
+        }
+        serverPipesRef.current = r.pipes;
+        setPipes(r.pipes);
+      }
+    } catch {
+      /* transient — stop draining; cash-out / next round reconciles */
+    } finally {
+      advanceLock.current = false;
+    }
+  }
+
+  // The bird hit the hidden gap (server already settled the loss on the pipe
+  // call). UI only — no further RPC.
+  function serverBust() {
+    if (settling.current) return;
+    settling.current = true;
+    g.current.shake = 1;
+    setPhase("crashed");
+    phaseRef.current = "crashed";
+    refreshProfile();
+    setResult({ kind: "crash", mult: 0, payout: 0, pipes: serverPipesRef.current, bet: amount });
+    roundRef.current = null;
+  }
+
   async function cashout() {
     if (phaseRef.current !== "playing" && phaseRef.current !== "ready") return;
     const round = roundRef.current;
     if (!round || settling.current) return;
     settling.current = true;
-    const p = g.current.score;
     setPhase("cashed");
     phaseRef.current = "cashed";
     try {
-      const r = await play<{ status: "cashed" | "bust"; pipes: number; multiplier: number; payout: number; bust_at?: number }>(
+      // Server pays its OWN confirmed pipe count, so cash-out can never bust.
+      const r = await play<{ status: string; pipes: number; multiplier: number; payout: number }>(
         "casino_flappy_cashout",
-        { p_round: round, p_pipes: p },
+        { p_round: round, p_pipes: serverPipesRef.current },
         { defer: true }
       );
       refreshProfile();
-      if (r.status === "bust") {
-        // pushed past the hidden bust pipe — the gap closed, you crash
-        g.current.shake = 1;
-        setPhase("crashed");
-        phaseRef.current = "crashed";
-        setResult({ kind: "crash", mult: 0, payout: 0, pipes: r.bust_at ?? r.pipes, bet: amount });
-      } else {
-        setResult({ kind: "cash", mult: r.multiplier, payout: r.payout, pipes: r.pipes, bet: amount });
-        if (r.multiplier > 1) celebrate(r.multiplier >= 5);
-      }
+      setResult({ kind: "cash", mult: r.multiplier, payout: r.payout, pipes: r.pipes, bet: amount });
+      if (r.multiplier > 1) celebrate(r.multiplier >= 5);
     } catch {
-      /* surfaced */
+      // Rare race: a pipe-confirm busted the round first. Reflect the crash.
+      setPhase("crashed");
+      phaseRef.current = "crashed";
+      setResult({ kind: "crash", mult: 0, payout: 0, pipes: serverPipesRef.current, bet: amount });
     } finally {
       roundRef.current = null;
       settling.current = false; // round is settled — let the player start a new one
     }
   }
-  async function crash(score: number) {
+
+  // Skill crash: the bird flew into a pipe before the hidden gap. Forfeit the bet.
+  async function crash(_score: number) {
     if (settling.current) return;
     settling.current = true;
     g.current.shake = 1;
@@ -249,9 +307,9 @@ export default function Flappy() {
     phaseRef.current = "crashed";
     const round = roundRef.current;
     try {
-      if (round) await play("casino_flappy_lose", { p_round: round, p_pipes: score }, { defer: true });
+      if (round) await play("casino_flappy_lose", { p_round: round, p_pipes: serverPipesRef.current }, { defer: true });
       refreshProfile();
-      setResult({ kind: "crash", mult: 0, payout: 0, pipes: score, bet: amount });
+      setResult({ kind: "crash", mult: 0, payout: 0, pipes: serverPipesRef.current, bet: amount });
     } catch {
       /* surfaced */
     } finally {
