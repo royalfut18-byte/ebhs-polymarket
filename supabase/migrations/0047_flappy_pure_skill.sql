@@ -57,7 +57,7 @@ begin
 end;
 $$;
 
-create or replace function public.casino_flappy_cashout(p_round uuid, p_pipes int)
+create or replace function public.casino_flappy_cashout(p_round uuid, p_pipes int default 0)
 returns json
 language plpgsql
 security definer
