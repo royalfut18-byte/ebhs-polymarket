@@ -16,6 +16,15 @@ export const flappyMult = (pipes: number) => Math.min(Math.round(Math.pow(1.14, 
 
 type Phase = "idle" | "ready" | "playing" | "crashed" | "cashed";
 
+// Fixed cloud layout (fractions of canvas height) — varied y/size so the sky
+// looks natural. Evenly spaced horizontally by the draw loop.
+const CLOUDS = [
+  { y: 0.16, r: 0.055 },
+  { y: 0.30, r: 0.04 },
+  { y: 0.21, r: 0.05 },
+  { y: 0.36, r: 0.045 },
+];
+
 interface Pipe {
   x: number;
   gapY: number; // centre of the gap (px)
@@ -31,6 +40,7 @@ interface GameState {
   spawnX: number;
   score: number;
   groundX: number;
+  cloudX: number; // continuous cloud-parallax offset (own accumulator)
   shake: number;
   t: number; // last timestamp
 }
@@ -55,7 +65,7 @@ export default function Flappy() {
   phaseRef.current = phase;
 
   const g = useRef<GameState>({
-    birdY: 0, vy: 0, rot: 0, wing: 0, pipes: [], spawnX: 0, score: 0, groundX: 0, shake: 0, t: 0,
+    birdY: 0, vy: 0, rot: 0, wing: 0, pipes: [], spawnX: 0, score: 0, groundX: 0, cloudX: 0, shake: 0, t: 0,
   });
   // The loop is set up once, so it must call the LATEST crash closure via a ref.
   const crashRef = useRef<(s: number) => void>(() => {});
@@ -116,6 +126,7 @@ export default function Flappy() {
       const dt = Math.min(0.032, st.t ? (now - st.t) / 1000 : 0.016);
       st.t = now;
       st.groundX = (st.groundX - w * 0.18 * dt) % 40;
+      if (w > 0) st.cloudX = (st.cloudX + w * 0.035 * dt) % (w + 200);
       st.wing = Math.max(0, st.wing - dt * 4);
       if (st.shake > 0) st.shake = Math.max(0, st.shake - dt * 4);
 
@@ -187,7 +198,7 @@ export default function Flappy() {
       roundRef.current = r.round_id;
       settling.current = false;
       const { h } = sizeRef.current;
-      g.current = { birdY: h * 0.45, vy: -h * 0.3, rot: 0, wing: 1, pipes: [], spawnX: h * 0.4, score: 0, groundX: 0, shake: 0, t: 0 };
+      g.current = { birdY: h * 0.45, vy: -h * 0.3, rot: 0, wing: 1, pipes: [], spawnX: h * 0.4, score: 0, groundX: 0, cloudX: g.current.cloudX, shake: 0, t: 0 };
       setPipes(0);
       setResult(null);
       setPhase("ready");
@@ -273,12 +284,15 @@ export default function Flappy() {
     ctx.fillStyle = gx.sky!;
     ctx.fillRect(0, 0, w, h);
 
-    // parallax clouds
+    // parallax clouds — drift slowly and wrap seamlessly off-screen, using
+    // their own continuous offset (never the ground's modulo-40 tile value).
     ctx.fillStyle = "rgba(255,255,255,0.55)";
-    const cy = h * 0.22;
-    for (let i = 0; i < 4; i++) {
-      const cx = ((i * w) / 3 + (st.groundX * 0.5)) % (w + 120) - 60;
-      cloud(ctx, cx, cy + (i % 2) * 30, h * 0.05);
+    const period = w + 200;
+    for (let i = 0; i < CLOUDS.length; i++) {
+      const c = CLOUDS[i];
+      const base = (i * period) / CLOUDS.length;
+      const cx = (((base - st.cloudX) % period) + period) % period - 100;
+      cloud(ctx, cx, h * c.y, h * c.r);
     }
 
     const groundY = h - h * 0.12;
