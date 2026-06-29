@@ -11,11 +11,11 @@ import BetAmount from "../BetAmount";
 import clsx from "clsx";
 
 // Multiplier after passing N pipes — mirrors _flappy_mult() on the server (the
-// server is the source of truth for the payout; this is just for live display).
-// Rake curve: starts at 0.5x and grows gently, so you're underwater until ~7
-// pipes and only a real run turns a profit. Capped at 10x to bound how much a
-// skilled/scripted player can farm.
-export const flappyMult = (pipes: number) => Math.min(Math.round(0.5 * Math.pow(1.12, Math.max(0, pipes)) * 100) / 100, 10);
+// server is the source of truth). House-edge curve 0.95 / 0.88^pipes: the server
+// rolls a hidden "bust pipe" (per-pipe survival 0.88) so the expected return is a
+// flat 0.95 at every cash-out point — uncapped (1000x safety ceiling ~pipe 54),
+// and a fabricated pipe count just busts against the hidden point.
+export const flappyMult = (pipes: number) => Math.min(Math.round((0.95 / Math.pow(0.88, Math.max(0, pipes))) * 100) / 100, 1000);
 
 type Phase = "idle" | "ready" | "playing" | "crashed" | "cashed";
 
@@ -218,15 +218,22 @@ export default function Flappy() {
     setPhase("cashed");
     phaseRef.current = "cashed";
     try {
-      const r = await play<{ pipes: number; multiplier: number; payout: number }>(
+      const r = await play<{ status: "cashed" | "bust"; pipes: number; multiplier: number; payout: number; bust_at?: number }>(
         "casino_flappy_cashout",
         { p_round: round, p_pipes: p },
         { defer: true }
       );
       refreshProfile();
-      setResult({ kind: "cash", mult: r.multiplier, payout: r.payout, pipes: r.pipes, bet: amount });
-      // Only celebrate a net win — a sub-1× cash-out pays out but is a loss.
-      if (r.multiplier > 1) celebrate(r.multiplier >= 5);
+      if (r.status === "bust") {
+        // pushed past the hidden bust pipe — the gap closed, you crash
+        g.current.shake = 1;
+        setPhase("crashed");
+        phaseRef.current = "crashed";
+        setResult({ kind: "crash", mult: 0, payout: 0, pipes: r.bust_at ?? r.pipes, bet: amount });
+      } else {
+        setResult({ kind: "cash", mult: r.multiplier, payout: r.payout, pipes: r.pipes, bet: amount });
+        if (r.multiplier > 1) celebrate(r.multiplier >= 5);
+      }
     } catch {
       /* surfaced */
     } finally {
@@ -392,8 +399,8 @@ export default function Flappy() {
             );
           })()}
           <p className="text-center text-[11px] text-ink-faint">
-            Tap or press Space to flap. You&apos;re underwater until ~7 pipes — fly past them and
-            cash out before you crash.
+            Tap or press Space to flap. The multiplier climbs every pipe — but a hidden gap
+            closes somewhere ahead, so cash out before you push too far.
           </p>
           {error && <p className="text-center text-sm text-no-text">{error}</p>}
         </>
