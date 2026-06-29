@@ -229,6 +229,7 @@ export default function Flappy() {
       /* surfaced */
     } finally {
       roundRef.current = null;
+      settling.current = false; // round is settled — let the player start a new one
     }
   }
   async function crash(score: number) {
@@ -246,6 +247,7 @@ export default function Flappy() {
       /* surfaced */
     } finally {
       roundRef.current = null;
+      settling.current = false; // round is settled — let the player start a new one
     }
   }
   crashRef.current = crash;
