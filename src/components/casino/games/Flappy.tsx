@@ -13,10 +13,9 @@ import clsx from "clsx";
 // Multiplier after passing N pipes — mirrors _flappy_mult() on the server (the
 // server is the source of truth for the payout; this is just for live display).
 // Rake curve: starts at 0.5x and grows gently, so you're underwater until ~7
-// pipes and only a real run turns a profit. No gameplay cap — just a far-off
-// 1000x safety ceiling (~67 pipes, unreachable in normal play) matching the
-// other games, so a script can't mint an absurd payout.
-export const flappyMult = (pipes: number) => Math.min(Math.round(0.5 * Math.pow(1.12, Math.max(0, pipes)) * 100) / 100, 1000);
+// pipes and only a real run turns a profit. Capped at 10x to bound how much a
+// skilled/scripted player can farm.
+export const flappyMult = (pipes: number) => Math.min(Math.round(0.5 * Math.pow(1.12, Math.max(0, pipes)) * 100) / 100, 10);
 
 type Phase = "idle" | "ready" | "playing" | "crashed" | "cashed";
 
