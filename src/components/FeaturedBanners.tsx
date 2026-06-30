@@ -74,8 +74,8 @@ function BannerCard({ market, stats, grad }: { market: Market; stats?: MarketSta
 
       {/* category tag + corner image */}
       <div className="relative mb-2 flex items-start justify-between gap-2">
-        <span className="inline-flex max-w-[70%] items-center gap-1 truncate rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
-          {emojiOf(market.category)} {market.category}
+        <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/25 px-2 py-0.5 text-[10px] font-bold text-orange-100 ring-1 ring-orange-400/40 backdrop-blur-sm">
+          🔥 Trending now
         </span>
         {isUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
