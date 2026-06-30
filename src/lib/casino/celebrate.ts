@@ -3,7 +3,7 @@
 export async function celebrate(big = false) {
   if (typeof window === "undefined") return;
   const confetti = (await import("canvas-confetti")).default;
-  const colors = ["#fbbf24", "#a855f7", "#5b7cfa", "#22d3ee", "#22c55e", "#f43f5e"];
+  const colors = ["#fbbf24", "#a855f7", "#2f80ff", "#22d3ee", "#22c55e", "#f43f5e"];
   confetti({
     particleCount: big ? 180 : 90,
     spread: big ? 100 : 65,

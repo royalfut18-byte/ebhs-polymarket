@@ -17,11 +17,11 @@ interface Segment {
 
 const SEGMENTS: Segment[] = [
   { label: "$1000", value: 1000, color: "#fbbf24" },
-  { label: "$50", value: 50, color: "#5b7cfa" },
+  { label: "$50", value: 50, color: "#2f80ff" },
   { label: "$500", value: 500, color: "#a855f7" },
   { label: "$50", value: 50, color: "#22d3ee" },
   { label: "$500", value: 500, color: "#a855f7" },
-  { label: "$50", value: 50, color: "#5b7cfa" },
+  { label: "$50", value: 50, color: "#2f80ff" },
 ];
 const N = SEGMENTS.length;
 const SLICE = 360 / N;
@@ -110,7 +110,7 @@ export default function SpinWheel() {
       setResult(prize);
       if (prize > 0) {
         const confetti = (await import("canvas-confetti")).default;
-        const colors = ["#fbbf24", "#a855f7", "#5b7cfa", "#22d3ee", "#22c55e"];
+        const colors = ["#fbbf24", "#a855f7", "#2f80ff", "#22d3ee", "#22c55e"];
         confetti({ particleCount: 150, spread: 75, startVelocity: 45, origin: { y: 0.7 }, colors });
         window.setTimeout(
           () => confetti({ particleCount: 90, spread: 110, scalar: 0.9, origin: { y: 0.6 }, colors }),
