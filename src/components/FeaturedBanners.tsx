@@ -17,7 +17,7 @@ const GRADS = [
 function HeroPanel({ totals }: { totals: { markets: number; volume: number; trades: number } }) {
   return (
     <div
-      className="relative flex h-40 flex-col justify-between overflow-hidden rounded-2xl p-4 ring-1 ring-white/10"
+      className="relative flex h-44 flex-col justify-between overflow-hidden rounded-2xl p-4 ring-1 ring-white/10"
       style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #1d4ed8 100%)" }}
     >
       <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-sky-400/25 blur-2xl" />
@@ -62,33 +62,39 @@ function BannerCard({ market, stats, grad }: { market: Market; stats?: MarketSta
   const pYes = displayPriceYes(market);
   const pct = toPercent(pYes);
   const vol = Number(stats?.volume ?? 0);
+  const traders = Number(stats?.trader_count ?? 0);
 
   return (
     <Link
       href={`/market/${market.id}`}
-      className="group relative flex h-40 flex-col overflow-hidden rounded-2xl p-4 ring-1 ring-white/10 transition-transform duration-200 hover:-translate-y-0.5"
+      className="group relative flex h-44 flex-col overflow-hidden rounded-2xl p-4 ring-1 ring-white/10 transition-transform duration-200 hover:-translate-y-0.5"
       style={{ background: grad }}
     >
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-white/10" />
 
-      {/* corner image / emoji */}
-      <div className="absolute right-3 top-3">
+      {/* category tag + corner image */}
+      <div className="relative mb-2 flex items-start justify-between gap-2">
+        <span className="inline-flex max-w-[70%] items-center gap-1 truncate rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
+          {emojiOf(market.category)} {market.category}
+        </span>
         {isUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt="" className="h-9 w-9 rounded-lg object-cover shadow-md ring-1 ring-white/25" />
+          <img src={img} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover shadow-md ring-1 ring-white/25" />
         ) : (
-          <span className="text-2xl drop-shadow">{img || emojiOf(market.category)}</span>
+          <span className="shrink-0 text-xl leading-none drop-shadow">{img || emojiOf(market.category)}</span>
         )}
       </div>
 
-      <h3 className="relative line-clamp-2 pr-11 text-sm font-bold leading-snug text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.4)]">
+      <h3 className="relative line-clamp-2 text-sm font-bold leading-snug text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.4)]">
         {market.question}
       </h3>
 
       <div className="relative mt-auto">
         <div className="mb-1.5 flex items-center justify-between text-[11px]">
           <span className="font-bold text-white">{pct} chance</span>
-          <span className="font-medium text-white/65">${formatCompact(vol)} vol</span>
+          <span className="font-medium text-white/65">
+            ${formatCompact(vol)} · {traders} traders
+          </span>
         </div>
         {/* yes/no probability bar */}
         <div className="flex h-1.5 overflow-hidden rounded-full bg-rose-500/30">
