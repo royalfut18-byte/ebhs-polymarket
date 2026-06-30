@@ -13,6 +13,7 @@ import MarketCard from "./MarketCard";
 import GroupedMarketCard from "./GroupedMarketCard";
 import CategoryPills from "./CategoryPills";
 import AnnouncementBanner from "./AnnouncementBanner";
+import SeasonResetBanner from "./SeasonResetBanner";
 import RecentActivity from "./RecentActivity";
 import { useCategories, useCategoryEmoji } from "./useCategories";
 import { AnimatedNumber, FadeIn, Stagger, StaggerItem, motion } from "./motion";
@@ -141,6 +142,7 @@ export default function HomeClient() {
 
   return (
     <div className="flex flex-col gap-6">
+      {!q && <SeasonResetBanner />}
       {!q && <AnnouncementBanner />}
       {!q && (
         <FadeIn>
