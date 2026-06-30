@@ -68,8 +68,8 @@ export default function GroupedMarketCard({
           <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug text-ink group-hover:text-white">
             {title}
           </h3>
-          <div className="mt-1.5 flex items-center gap-2 text-xs text-ink-faint">
-            <span className="inline-flex items-center gap-1 rounded-md bg-accent-violet/15 px-1.5 py-0.5 font-medium text-accent-violet">
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/35 bg-brand/12 px-2.5 py-1 text-[11px] font-semibold leading-none text-brand-light">
               <Layers size={11} /> {options.length} options
             </span>
             {status !== "open" && <StatusBadge status={status} />}

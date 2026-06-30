@@ -204,7 +204,7 @@ export default function HomeClient() {
         ) : items.length === 0 ? (
           <EmptyState />
         ) : (
-          <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <Stagger className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {items.map((it) =>
               it.kind === "single" ? (
                 <StaggerItem key={it.market.id}>
@@ -356,7 +356,7 @@ function Stat({
 
 function Skeletons() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {Array.from({ length: 8 }).map((_, i) => (
         <div key={i} className="card flex flex-col gap-3 p-4">
           <div className="flex gap-3">
