@@ -74,7 +74,7 @@ function BannerCard({ market, stats, grad }: { market: Market; stats?: MarketSta
 
       {/* category tag + corner image */}
       <div className="relative mb-2 flex items-start justify-between gap-2">
-        <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#ffb02e] via-[#ff8a1e] to-[#ff6a13] px-2 py-0.5 text-[10px] font-bold text-white shadow-[0_2px_10px_-2px_rgba(255,138,30,0.7)] ring-1 ring-amber-200/50">
+        <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-orange-400/85 to-orange-500/85 px-2 py-0.5 text-[10px] font-bold text-white shadow-[0_2px_8px_-3px_rgba(234,88,12,0.4)] ring-1 ring-orange-300/30">
           🔥 Trending now
         </span>
         {isUrl ? (
