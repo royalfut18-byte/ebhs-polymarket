@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import type { Market, MarketStat } from "@/lib/types";
 import { displayPriceYes } from "@/lib/lmsr";
-import { formatCompact, toPercent } from "@/lib/format";
+import { formatCompact, toCents, toPercent } from "@/lib/format";
 import { useCategoryEmoji } from "./useCategories";
 
 // Distinct vibrant gradients (cool blue/indigo family, to match the theme).
@@ -57,36 +57,50 @@ function BannerCard({ market, stats, grad }: { market: Market; stats?: MarketSta
   const emojiOf = useCategoryEmoji();
   const img = market.image_url?.trim();
   const isUrl = img && /^https?:\/\//i.test(img);
-  const pct = toPercent(displayPriceYes(market));
+  const pYes = displayPriceYes(market);
+  const pct = toPercent(pYes);
   const vol = Number(stats?.volume ?? 0);
 
   return (
     <Link
       href={`/market/${market.id}`}
-      className="group relative flex h-40 overflow-hidden rounded-2xl p-4 ring-1 ring-white/10 transition-transform duration-200 hover:-translate-y-0.5"
+      className="group relative flex h-40 flex-col overflow-hidden rounded-2xl p-4 ring-1 ring-white/10 transition-transform duration-200 hover:-translate-y-0.5"
       style={{ background: grad }}
     >
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-white/10" />
-      <div className="relative flex min-w-0 flex-1 flex-col justify-between">
-        <h3 className="line-clamp-3 pr-2 text-sm font-bold leading-snug text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.4)]">
-          {market.question}
-        </h3>
-        <div>
-          <div className="mb-2 text-[11px] font-medium text-white/75">
-            {pct} chance · ${formatCompact(vol)} vol
-          </div>
-          <span className="inline-flex items-center gap-1 rounded-lg bg-white/20 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm transition-colors group-hover:bg-white/30">
-            Trade <ArrowRight size={12} />
-          </span>
-        </div>
-      </div>
-      <div className="relative ml-2 flex w-16 shrink-0 items-center justify-center">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-white/10" />
+
+      {/* corner image / emoji */}
+      <div className="absolute right-3 top-3">
         {isUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt="" className="h-16 w-16 rounded-xl object-cover shadow-lg ring-1 ring-white/20" />
+          <img src={img} alt="" className="h-9 w-9 rounded-lg object-cover shadow-md ring-1 ring-white/25" />
         ) : (
-          <span className="text-5xl drop-shadow-lg">{img || emojiOf(market.category)}</span>
+          <span className="text-2xl drop-shadow">{img || emojiOf(market.category)}</span>
         )}
+      </div>
+
+      <h3 className="relative line-clamp-2 pr-11 text-sm font-bold leading-snug text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.4)]">
+        {market.question}
+      </h3>
+
+      <div className="relative mt-auto">
+        <div className="mb-1.5 flex items-center justify-between text-[11px]">
+          <span className="font-bold text-white">{pct} chance</span>
+          <span className="font-medium text-white/65">${formatCompact(vol)} vol</span>
+        </div>
+        {/* yes/no probability bar */}
+        <div className="flex h-1.5 overflow-hidden rounded-full bg-rose-500/30">
+          <div className="h-full rounded-full bg-emerald-400" style={{ width: `${pYes * 100}%` }} />
+        </div>
+        {/* yes / no prices */}
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <span className="rounded-lg bg-black/25 py-1 text-center text-[11px] font-bold text-emerald-300 backdrop-blur-sm">
+            Yes {toCents(pYes)}
+          </span>
+          <span className="rounded-lg bg-black/25 py-1 text-center text-[11px] font-bold text-rose-300 backdrop-blur-sm">
+            No {toCents(1 - pYes)}
+          </span>
+        </div>
       </div>
     </Link>
   );
