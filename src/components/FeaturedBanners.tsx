@@ -74,7 +74,7 @@ function BannerCard({ market, stats, grad }: { market: Market; stats?: MarketSta
 
       {/* category tag + corner image */}
       <div className="relative mb-2 flex items-start justify-between gap-2">
-        <span className="inline-flex items-center gap-1 rounded-md bg-black/40 px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide text-orange-400 ring-1 ring-orange-500/30 backdrop-blur-sm">
+        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide text-orange-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">
           <Flame size={11} fill="currentColor" /> Trending now
         </span>
         {isUrl ? (
