@@ -7,7 +7,7 @@ import { GAMES } from "@/lib/casino/games";
 import { getSupabase } from "@/lib/supabase/client";
 import { formatMoney } from "@/lib/format";
 import { FadeIn, Stagger, StaggerItem, motion } from "@/components/motion";
-import GameIcon from "./GameIcon";
+import GameArt from "./GameArt";
 
 export default function CasinoHome() {
   const { data: wagers = {} } = useQuery({
@@ -78,9 +78,9 @@ export default function CasinoHome() {
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/55 to-transparent" />
                     {/* soft glow blob */}
                     <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/20 blur-2xl" />
-                    {/* big medallion icon */}
-                    <div className="absolute left-1/2 top-[36%] -translate-x-1/2 -translate-y-1/2 transition-transform duration-300 group-hover:scale-110">
-                      <GameIcon game={g.slug} size={66} />
+                    {/* game artwork, full-bleed (Stake-style) */}
+                    <div className="absolute inset-x-0 top-0 bottom-[24%] p-3.5 transition-transform duration-300 group-hover:scale-[1.07]">
+                      <GameArt game={g.slug} />
                     </div>
                     {/* name */}
                     <div className="absolute inset-x-0 bottom-0 p-3">
