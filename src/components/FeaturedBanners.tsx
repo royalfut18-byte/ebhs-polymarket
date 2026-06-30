@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { Trophy } from "lucide-react";
 import type { Market, MarketStat } from "@/lib/types";
 import { displayPriceYes } from "@/lib/lmsr";
 import { formatCompact, toCents, toPercent } from "@/lib/format";
@@ -18,22 +18,24 @@ function HeroPanel({ totals }: { totals: { markets: number; volume: number; trad
   return (
     <div
       className="relative flex h-40 flex-col justify-between overflow-hidden rounded-2xl p-4 ring-1 ring-white/10"
-      style={{ background: "linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%)" }}
+      style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #1d4ed8 100%)" }}
     >
-      <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-white/[0.06]" />
+      <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-sky-400/25 blur-2xl" />
+      <div className="pointer-events-none absolute -bottom-14 -left-10 h-36 w-36 rounded-full bg-indigo-500/30 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/[0.07]" />
       <div className="relative">
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-sky-200/90">
-          <Sparkles size={11} /> EBHS Predictions
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white backdrop-blur-sm">
+          <Trophy size={11} /> EBHS Predictions
         </span>
-        <h2 className="mt-1 text-[19px] font-black leading-[1.05] text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.4)]">
-          Predict the future. <span className="text-sky-200">Win prizes.</span>
+        <h2 className="mt-2.5 text-[22px] font-black leading-[1.04] tracking-tight text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]">
+          Predict the future.
+          <br />
+          <span className="bg-gradient-to-r from-sky-200 to-cyan-200 bg-clip-text text-transparent">
+            Win prizes.
+          </span>
         </h2>
-        <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-white/80">
-          Trade YES/NO on everything at EBHS — your trades move the market. Climb the leaderboard. 🏆
-        </p>
       </div>
-      <div className="relative flex items-center gap-3 text-white">
+      <div className="relative flex items-center gap-3.5 text-white">
         <HeroStat label="Markets" value={totals.markets.toLocaleString()} />
         <span className="h-7 w-px bg-white/20" />
         <HeroStat label="Volume" value={`$${formatCompact(totals.volume)}`} />
@@ -47,8 +49,8 @@ function HeroPanel({ totals }: { totals: { markets: number; volume: number; trad
 function HeroStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="leading-none">
-      <div className="text-sm font-black tabular-nums">{value}</div>
-      <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/60">{label}</div>
+      <div className="text-[15px] font-black tabular-nums">{value}</div>
+      <div className="mt-1 text-[9px] font-semibold uppercase tracking-wider text-white/60">{label}</div>
     </div>
   );
 }
