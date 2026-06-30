@@ -74,7 +74,7 @@ function BannerCard({ market, stats, grad }: { market: Market; stats?: MarketSta
 
       {/* category tag + corner image */}
       <div className="relative mb-2 flex items-start justify-between gap-2">
-        <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/25 px-2 py-0.5 text-[10px] font-bold text-orange-100 ring-1 ring-orange-400/40 backdrop-blur-sm">
+        <span className="inline-flex items-center gap-1 rounded-full bg-[#f9640f] px-2 py-0.5 text-[10px] font-bold text-white shadow-[0_2px_8px_-2px_rgba(249,100,15,0.6)] ring-1 ring-orange-300/50">
           🔥 Trending now
         </span>
         {isUrl ? (
