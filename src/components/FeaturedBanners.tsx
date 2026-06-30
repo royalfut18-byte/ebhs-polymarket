@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Trophy } from "lucide-react";
+import { Flame, Trophy } from "lucide-react";
 import type { Market, MarketStat } from "@/lib/types";
 import { displayPriceYes } from "@/lib/lmsr";
 import { formatCompact, toCents, toPercent } from "@/lib/format";
@@ -74,8 +74,8 @@ function BannerCard({ market, stats, grad }: { market: Market; stats?: MarketSta
 
       {/* category tag + corner image */}
       <div className="relative mb-2 flex items-start justify-between gap-2">
-        <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#ffb02e]/50 via-[#ff8a1e]/50 to-[#ff6a13]/50 px-2 py-0.5 text-[10px] font-bold text-white shadow-[0_2px_10px_-3px_rgba(255,138,30,0.4)] ring-1 ring-amber-200/40">
-          🔥 Trending now
+        <span className="inline-flex items-center gap-1 rounded-md bg-black/40 px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide text-orange-400 ring-1 ring-orange-500/30 backdrop-blur-sm">
+          <Flame size={11} fill="currentColor" /> Trending now
         </span>
         {isUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
