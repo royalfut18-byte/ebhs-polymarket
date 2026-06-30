@@ -14,6 +14,7 @@ import GroupedMarketCard from "./GroupedMarketCard";
 import CategoryPills from "./CategoryPills";
 import AnnouncementBanner from "./AnnouncementBanner";
 import SeasonResetBanner from "./SeasonResetBanner";
+import FeaturedBanners from "./FeaturedBanners";
 import RecentActivity from "./RecentActivity";
 import { useCategories, useCategoryEmoji } from "./useCategories";
 import { AnimatedNumber, FadeIn, Stagger, StaggerItem, motion } from "./motion";
@@ -146,45 +147,7 @@ export default function HomeClient() {
       {!q && <AnnouncementBanner />}
       {!q && (
         <FadeIn>
-          <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-white/[0.05] via-white/[0.02] to-transparent p-7 sm:p-10">
-            <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 animate-float rounded-full bg-brand/20 blur-3xl" />
-            <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-accent-violet/15 blur-3xl" />
-            <div
-              className={clsx(
-                "relative grid gap-8",
-                trending && "lg:grid-cols-2"
-              )}
-            >
-              <div className="max-w-2xl">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white/[0.04] px-3 py-1 text-xs font-medium text-ink-dim">
-                  <Sparkles size={13} className="text-brand-light" /> Play-money prediction market
-                </span>
-                <h1 className="mt-4 text-3xl font-bold leading-[1.1] tracking-tight sm:text-5xl">
-                  Predict the future. <br className="hidden sm:block" />
-                  <span className="text-gradient">Win prizes.</span>
-                </h1>
-                <p className="mt-3 max-w-lg text-sm text-ink-dim sm:text-base">
-                  Trade YES/NO on everything happening at EBHS. Prices are live probabilities — your
-                  trades move the market. Climb the leaderboard. 🏆
-                </p>
-                <div className="mt-6 flex flex-wrap items-center gap-3">
-                  <a href="#markets" className="btn btn-primary">
-                    <TrendingUp size={16} /> Browse markets
-                  </a>
-                  <Link href="/suggest" className="btn btn-ghost">
-                    <Lightbulb size={16} /> Suggest a market
-                  </Link>
-                </div>
-                <div className="mt-8 flex gap-8">
-                  <Stat label="Markets" value={totals.markets} />
-                  <Stat label="Volume" value={totals.volume} prefix="$" compact />
-                  <Stat label="Trades" value={totals.trades} />
-                </div>
-              </div>
-
-              {trending && <FeaturedMarket market={trending} stats={statsMap[trending.id]} />}
-            </div>
-          </section>
+          <FeaturedBanners markets={allMarkets} statsMap={statsMap} />
         </FadeIn>
       )}
 
@@ -195,7 +158,16 @@ export default function HomeClient() {
           </h2>
         </div>
 
-        <CategoryPills active={category} onChange={setCategory} categories={categoryList} />
+        <div className="flex items-center gap-2.5">
+          <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand/15 px-3 py-1.5 text-sm font-semibold text-brand-light">
+            <TrendingUp size={14} /> Top
+          </span>
+          {/* vertical divider */}
+          <span className="h-6 w-px shrink-0 bg-border-strong" />
+          <div className="min-w-0 flex-1">
+            <CategoryPills active={category} onChange={setCategory} categories={categoryList} />
+          </div>
+        </div>
 
         {marketsQuery.isError ? (
           <ErrorState />

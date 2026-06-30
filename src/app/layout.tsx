@@ -7,7 +7,6 @@ import Providers from "@/components/Providers";
 import Navbar from "@/components/Navbar";
 import ConfigBanner from "@/components/ConfigBanner";
 import SupportWidget from "@/components/SupportWidget";
-import AdsterraSidebar from "@/components/AdsterraSidebar";
 import AppGate from "@/components/AppGate";
 
 const inter = Inter({
@@ -32,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Navbar />
             </Suspense>
             <ConfigBanner />
-            <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 min-[1200px]:pr-[200px]">
+            <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
               <AppGate>{children}</AppGate>
             </main>
             <footer className="mt-10 border-t border-border px-4 py-8 text-center text-xs text-ink-faint">
@@ -41,7 +40,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </footer>
           </div>
           <SupportWidget />
-          <AdsterraSidebar />
         </Providers>
         <Analytics />
       </body>

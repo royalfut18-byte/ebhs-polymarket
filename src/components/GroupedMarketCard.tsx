@@ -51,9 +51,9 @@ export default function GroupedMarketCard({
       onClick={() => router.push(`/group/${groupId}`)}
       whileHover={{ y: -5 }}
       transition={{ type: "spring", stiffness: 320, damping: 22 }}
-      className="group card card-hover relative flex h-full cursor-pointer flex-col gap-3.5 overflow-hidden p-4"
+      className="group relative flex h-full cursor-pointer flex-col gap-3.5 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#18294a] via-[#112138] to-[#0d1a2c] p-4 shadow-card transition-all duration-300 hover:border-brand/40 hover:shadow-lift"
     >
-      <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-accent-violet/20 opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100" />
+      <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-brand/25 opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100" />
 
       <div className="relative flex items-start gap-3">
         {isUrl ? (
@@ -98,11 +98,12 @@ export default function GroupedMarketCard({
         {more > 0 && <div className="text-xs font-medium text-accent-violet">+{more} more</div>}
       </div>
 
-      <div className="relative mt-auto flex items-center gap-4 text-xs text-ink-faint">
+      <div className="relative mt-auto flex items-center gap-2.5 text-xs text-ink-faint">
         <span className="inline-flex items-center gap-1">
           <BarChart3 size={13} />
           {`$${formatCompact(volume)} vol`}
         </span>
+        <span className="h-3 w-px bg-border" />
         <span className="inline-flex items-center gap-1">
           <Users size={13} />
           {traders} traders
