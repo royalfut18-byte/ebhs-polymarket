@@ -173,6 +173,17 @@ export interface Prizes {
   entries: PrizeEntry[];
 }
 
+// Past-tournament winners — admin-picked per month, shown on the leaderboard.
+export interface PastWinnerEntry {
+  place: string;    // e.g. "1st"
+  username: string; // the winner's @handle
+  prize: string;    // e.g. "$20 gift card"
+}
+export interface PastWinnerMonth {
+  month: string;            // e.g. "June 2026"
+  winners: PastWinnerEntry[];
+}
+
 // ---------------------------------------------------------------------------
 // Casino
 // ---------------------------------------------------------------------------

@@ -16,6 +16,7 @@ import type {
   Position,
   PositionWithMarket,
   Prizes,
+  PastWinnerMonth,
   Profile,
   ProfilePrivate,
   SupportMessage,
@@ -197,6 +198,17 @@ export async function fetchPrizes(): Promise<Prizes | null> {
     .maybeSingle();
   if (error) throw error;
   return ((data?.value as Prizes) ?? null) || null;
+}
+
+export async function fetchPastWinners(): Promise<PastWinnerMonth[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("app_settings")
+    .select("value")
+    .eq("key", "past_winners")
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.value as PastWinnerMonth[]) ?? [];
 }
 
 export async function fetchAdminMessages(): Promise<AdminMessage[]> {

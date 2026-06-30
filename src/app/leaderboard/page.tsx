@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Gift, Trophy } from "lucide-react";
+import { Crown, Gift, Trophy } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
-import { fetchLeaderboard, fetchPrizes } from "@/lib/queries";
+import { fetchLeaderboard, fetchPastWinners, fetchPrizes } from "@/lib/queries";
 import { formatMoney } from "@/lib/format";
 import type { LeaderboardRow } from "@/lib/types";
 import Avatar from "@/components/Avatar";
@@ -20,6 +20,7 @@ export default function LeaderboardPage() {
     queryFn: fetchLeaderboard,
   });
   const { data: prizes } = useQuery({ queryKey: ["prizes"], queryFn: fetchPrizes });
+  const { data: pastWinners = [] } = useQuery({ queryKey: ["past-winners"], queryFn: fetchPastWinners });
 
   const hasPodium = data.length >= 3;
   const top3 = hasPodium ? data.slice(0, 3) : [];
@@ -108,9 +109,14 @@ export default function LeaderboardPage() {
                             </span>
                           )}
                           {row.role !== "user" && (
-                            <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs font-medium capitalize text-ink-dim">
-                              {row.role}
-                            </span>
+                            <>
+                              <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs font-medium capitalize text-ink-dim">
+                                {row.role}
+                              </span>
+                              <span className="shrink-0 text-[11px] font-medium italic text-ink-faint">
+                                (ineligible for prize)
+                              </span>
+                            </>
                           )}
                         </div>
                       </div>
@@ -125,6 +131,38 @@ export default function LeaderboardPage() {
             </Stagger>
           )}
         </>
+      )}
+
+      {pastWinners.length > 0 && (
+        <FadeIn delay={0.15}>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <Crown size={18} className="text-yellow-300" />
+              <h2 className="text-lg font-bold tracking-tight">Hall of Fame</h2>
+            </div>
+            <div className="flex flex-col gap-3">
+              {pastWinners.map((m, i) => (
+                <div key={i} className="card overflow-hidden p-4">
+                  <div className="mb-2.5 text-sm font-bold text-ink-dim">{m.month}</div>
+                  <ul className="flex flex-col gap-1.5">
+                    {m.winners.map((w, j) => (
+                      <li key={j} className="flex items-center gap-2.5 text-sm">
+                        <span className="w-7 shrink-0 text-center text-base leading-none">
+                          {MEDALS[j] ?? "🏅"}
+                        </span>
+                        <Link href={`/u/${w.username}`} className="font-semibold text-ink hover:underline">
+                          @{w.username}
+                        </Link>
+                        <span className="text-xs text-ink-faint">{w.place}</span>
+                        {w.prize && <span className="ml-auto text-xs font-medium text-yellow-300">{w.prize}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </FadeIn>
       )}
     </div>
   );
@@ -158,6 +196,9 @@ function PodiumCard({
       </div>
       <Avatar name={row.username} size={isFirst ? 52 : 42} />
       <div className="mt-1 w-full truncate text-sm font-semibold text-ink">@{row.username}</div>
+      {row.role !== "user" && (
+        <div className="text-[10px] font-medium italic leading-tight text-ink-faint">(ineligible for prize)</div>
+      )}
       <div className={clsx("font-bold", isFirst ? "text-lg text-yellow-200" : "text-ink")}>
         {formatMoney(row.net_worth)}
       </div>
