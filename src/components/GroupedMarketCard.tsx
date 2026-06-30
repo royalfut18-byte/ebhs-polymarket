@@ -30,7 +30,7 @@ export default function GroupedMarketCard({
   const emojiOf = useCategoryEmoji();
 
   const sorted = [...options].sort((a, b) => displayPriceYes(b) - displayPriceYes(a));
-  const top = sorted.slice(0, 4);
+  const top = sorted.slice(0, 3);
   const more = sorted.length - top.length;
 
   let volume = 0;
@@ -51,7 +51,7 @@ export default function GroupedMarketCard({
       onClick={() => router.push(`/group/${groupId}`)}
       whileHover={{ y: -5 }}
       transition={{ type: "spring", stiffness: 320, damping: 22 }}
-      className="group relative flex h-full cursor-pointer flex-col gap-3.5 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#18294a] via-[#112138] to-[#0d1a2c] p-4 shadow-card transition-all duration-300 hover:border-brand/40 hover:shadow-lift"
+      className="group relative flex h-[232px] cursor-pointer flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#18294a] via-[#112138] to-[#0d1a2c] p-4 shadow-card transition-all duration-300 hover:border-brand/40 hover:shadow-lift"
     >
       <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-brand/25 opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100" />
 
@@ -77,7 +77,7 @@ export default function GroupedMarketCard({
         </div>
       </div>
 
-      <div className="relative flex flex-col gap-2">
+      <div className="relative flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
         {top.map((o) => {
           const p = displayPriceYes(o);
           return (

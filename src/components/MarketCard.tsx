@@ -41,7 +41,7 @@ export default function MarketCard({ market, stats }: { market: Market; stats?: 
       onClick={() => go()}
       whileHover={{ y: -5 }}
       transition={{ type: "spring", stiffness: 320, damping: 22 }}
-      className="group relative flex cursor-pointer flex-col gap-3.5 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#18294a] via-[#112138] to-[#0d1a2c] p-4 shadow-card transition-all duration-300 hover:border-brand/40 hover:shadow-lift"
+      className="group relative flex h-[232px] cursor-pointer flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#18294a] via-[#112138] to-[#0d1a2c] p-4 shadow-card transition-all duration-300 hover:border-brand/40 hover:shadow-lift"
     >
       {/* hover glow */}
       <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-brand/25 opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100" />
@@ -110,7 +110,7 @@ export default function MarketCard({ market, stats }: { market: Market; stats?: 
       </div>
 
       {/* footer */}
-      <div className="flex items-center gap-2.5 text-xs text-ink-faint">
+      <div className="mt-auto flex items-center gap-2.5 text-xs text-ink-faint">
         <span className="inline-flex items-center gap-1">
           <BarChart3 size={13} />
           {`$${formatCompact(stats?.volume ?? 0)} vol`}
