@@ -147,7 +147,7 @@ export default function HomeClient() {
       {!q && <AnnouncementBanner />}
       {!q && (
         <FadeIn>
-          <FeaturedBanners markets={allMarkets} statsMap={statsMap} />
+          <FeaturedBanners markets={allMarkets} statsMap={statsMap} totals={totals} />
         </FadeIn>
       )}
 
