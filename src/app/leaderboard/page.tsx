@@ -40,6 +40,37 @@ export default function LeaderboardPage() {
         </div>
       </FadeIn>
 
+      {pastWinners.length > 0 && (
+        <FadeIn delay={0.04}>
+          <div className="relative overflow-hidden rounded-2xl border border-yellow-400/30 bg-gradient-to-br from-yellow-400/[0.10] via-amber-500/[0.04] to-transparent p-5">
+            <div className="pointer-events-none absolute -left-12 -top-12 h-40 w-40 rounded-full bg-yellow-400/15 blur-3xl" />
+            <div className="relative mb-3.5 flex items-center gap-2 text-yellow-300">
+              <Crown size={18} />
+              <h2 className="text-base font-bold">Hall of Fame</h2>
+            </div>
+            <div className="relative flex flex-col gap-3.5">
+              {pastWinners.map((m, i) => (
+                <div key={i} className={clsx(i > 0 && "border-t border-white/10 pt-3.5")}>
+                  <div className="mb-2 text-xs font-bold uppercase tracking-wide text-ink-faint">{m.month}</div>
+                  <ul className="flex flex-col gap-1.5">
+                    {m.winners.map((w, j) => (
+                      <li key={j} className="flex items-center gap-2.5 text-sm">
+                        <span className="w-6 shrink-0 text-center text-base leading-none">{MEDALS[j] ?? "🏅"}</span>
+                        <Link href={`/u/${w.username}`} className="font-semibold text-ink hover:underline">
+                          @{w.username}
+                        </Link>
+                        <span className="text-xs text-ink-faint">{w.place}</span>
+                        {w.prize && <span className="ml-auto text-xs font-medium text-yellow-300">{w.prize}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </FadeIn>
+      )}
+
       {prizes && prizes.entries && prizes.entries.length > 0 && (
         <FadeIn delay={0.05}>
           <div className="relative overflow-hidden rounded-2xl border border-yellow-400/25 bg-gradient-to-br from-yellow-400/[0.12] to-transparent p-5">
@@ -131,38 +162,6 @@ export default function LeaderboardPage() {
             </Stagger>
           )}
         </>
-      )}
-
-      {pastWinners.length > 0 && (
-        <FadeIn delay={0.15}>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <Crown size={18} className="text-yellow-300" />
-              <h2 className="text-lg font-bold tracking-tight">Hall of Fame</h2>
-            </div>
-            <div className="flex flex-col gap-3">
-              {pastWinners.map((m, i) => (
-                <div key={i} className="card overflow-hidden p-4">
-                  <div className="mb-2.5 text-sm font-bold text-ink-dim">{m.month}</div>
-                  <ul className="flex flex-col gap-1.5">
-                    {m.winners.map((w, j) => (
-                      <li key={j} className="flex items-center gap-2.5 text-sm">
-                        <span className="w-7 shrink-0 text-center text-base leading-none">
-                          {MEDALS[j] ?? "🏅"}
-                        </span>
-                        <Link href={`/u/${w.username}`} className="font-semibold text-ink hover:underline">
-                          @{w.username}
-                        </Link>
-                        <span className="text-xs text-ink-faint">{w.place}</span>
-                        {w.prize && <span className="ml-auto text-xs font-medium text-yellow-300">{w.prize}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
-        </FadeIn>
       )}
     </div>
   );
