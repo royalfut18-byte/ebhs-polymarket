@@ -13,8 +13,8 @@ export default function SeasonResetBanner() {
       <div className="relative min-w-0">
         <div className="font-bold text-ink">Balances reset</div>
         <div className="text-sm text-ink-dim">
-          Season 2 is here — every balance has been reset to{" "}
-          <span className="font-semibold text-amber-200">$1,000</span>. Fresh start for everyone; climb the new leaderboard and win prizes.
+          All balances will reset on{" "}
+          <span className="font-semibold text-amber-200">3/07/2026</span>, once every market has been resolved. No new markets will be created until then.
         </div>
       </div>
     </div>
