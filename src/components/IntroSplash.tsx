@@ -35,8 +35,6 @@ export default function IntroSplash() {
   function dismiss() {
     sessionStorage.setItem("ebpoly_intro_s2", "1");
     setShow(false);
-    // Hand off to the one-time "what's new" reel (SeasonShowcase listens).
-    window.dispatchEvent(new Event("ebpoly-intro-done"));
   }
 
   return (
