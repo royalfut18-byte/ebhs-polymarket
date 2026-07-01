@@ -66,7 +66,7 @@ const SCENES: Scene[] = [
     accent: "#f5b301",
     glow: "rgba(245,179,1,0.45)",
     title: "Welcome to Season 2",
-    sub: "New season — everyone starts at $1,000. Climb the leaderboard.",
+    sub: "Every balance is reset to $1,000. Climb the new leaderboard and win prizes.",
   },
 ];
 
