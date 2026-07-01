@@ -190,6 +190,7 @@ export default function Navbar() {
               <Link href="/login" className="btn btn-ghost">
                 Log in
               </Link>
+              <span className="hidden h-6 w-px self-center bg-border-strong sm:inline-block" />
               <Link href="/signup" className="btn btn-primary hidden sm:inline-flex">
                 <UserIcon size={15} /> Sign up
               </Link>

@@ -8,23 +8,23 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Deep, slightly indigo-tinted dark palette
+        // Season 2 — deep navy-blue "Polymarket" palette
         bg: {
-          DEFAULT: "#08080d",
-          soft: "#0e0e16",
-          card: "#13131d",
-          hover: "#1b1b28",
-          elevated: "#20202e",
+          DEFAULT: "#0a1424",
+          soft: "#0d1a2e",
+          card: "#112138",
+          hover: "#172b49",
+          elevated: "#1d3458",
         },
         border: {
-          DEFAULT: "rgba(255,255,255,0.07)",
-          soft: "rgba(255,255,255,0.12)",
-          strong: "rgba(255,255,255,0.18)",
+          DEFAULT: "rgba(120,160,230,0.12)",
+          soft: "rgba(120,160,230,0.20)",
+          strong: "rgba(120,160,230,0.30)",
         },
         ink: {
-          DEFAULT: "#f4f4f7",
-          dim: "#9d9dac",
-          faint: "#63636f",
+          DEFAULT: "#eef3fc",
+          dim: "#93a4c4",
+          faint: "#5c6e8e",
         },
         yes: {
           DEFAULT: "#22c55e",
@@ -37,14 +37,14 @@ const config: Config = {
           text: "#fb7185",
         },
         brand: {
-          DEFAULT: "#5b7cfa",
-          dark: "#4259d8",
-          light: "#8aa0ff",
-          glow: "#6d8bff",
+          DEFAULT: "#2f80ff",
+          dark: "#1c63e6",
+          light: "#6aa6ff",
+          glow: "#3d8bff",
         },
         accent: {
-          violet: "#a855f7",
-          cyan: "#22d3ee",
+          violet: "#3b82f6",
+          cyan: "#38bdf8",
         },
       },
       borderRadius: {
@@ -58,13 +58,13 @@ const config: Config = {
       boxShadow: {
         card: "0 1px 0 0 rgba(255,255,255,0.04) inset, 0 10px 30px -16px rgba(0,0,0,0.8)",
         lift: "0 1px 0 0 rgba(255,255,255,0.06) inset, 0 24px 50px -20px rgba(0,0,0,0.85)",
-        glow: "0 0 0 1px rgba(91,124,250,0.35), 0 12px 40px -12px rgba(91,124,250,0.45)",
+        glow: "0 0 0 1px rgba(47,128,255,0.40), 0 12px 40px -12px rgba(47,128,255,0.50)",
         "glow-yes": "0 0 0 1px rgba(34,197,94,0.35), 0 12px 40px -12px rgba(34,197,94,0.4)",
         "glow-no": "0 0 0 1px rgba(244,63,94,0.35), 0 12px 40px -12px rgba(244,63,94,0.4)",
       },
       backgroundImage: {
-        "brand-gradient": "linear-gradient(135deg, #5b7cfa 0%, #8b5cf6 100%)",
-        "brand-sheen": "linear-gradient(135deg, #6d8bff 0%, #22d3ee 100%)",
+        "brand-gradient": "linear-gradient(135deg, #3d8bff 0%, #1c63e6 100%)",
+        "brand-sheen": "linear-gradient(135deg, #6aa6ff 0%, #38bdf8 100%)",
       },
       keyframes: {
         shimmer: {

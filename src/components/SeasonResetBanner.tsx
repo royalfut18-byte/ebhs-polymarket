@@ -11,10 +11,10 @@ export default function SeasonResetBanner() {
         <RotateCcw size={18} />
       </span>
       <div className="relative min-w-0">
-        <div className="font-bold text-ink">New season incoming</div>
+        <div className="font-bold text-ink">Balances reset</div>
         <div className="text-sm text-ink-dim">
-          All balances will be reset once all markets have been resolved on{" "}
-          <span className="font-semibold text-amber-200">3/07/26</span>. No new markets will be created until then.
+          Season 2 is here — every balance has been reset to{" "}
+          <span className="font-semibold text-amber-200">$1,000</span>. Fresh start for everyone; climb the new leaderboard and win prizes.
         </div>
       </div>
     </div>

@@ -30,7 +30,7 @@ export default function GroupedMarketCard({
   const emojiOf = useCategoryEmoji();
 
   const sorted = [...options].sort((a, b) => displayPriceYes(b) - displayPriceYes(a));
-  const top = sorted.slice(0, 4);
+  const top = sorted.slice(0, 3);
   const more = sorted.length - top.length;
 
   let volume = 0;
@@ -51,9 +51,9 @@ export default function GroupedMarketCard({
       onClick={() => router.push(`/group/${groupId}`)}
       whileHover={{ y: -5 }}
       transition={{ type: "spring", stiffness: 320, damping: 22 }}
-      className="group card card-hover relative flex h-full cursor-pointer flex-col gap-3.5 overflow-hidden p-4"
+      className="group relative flex h-[232px] cursor-pointer flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#18294a] via-[#112138] to-[#0d1a2c] p-4 shadow-card transition-all duration-300 hover:border-brand/40 hover:shadow-lift"
     >
-      <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-accent-violet/20 opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100" />
+      <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-brand/25 opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100" />
 
       <div className="relative flex items-start gap-3">
         {isUrl ? (
@@ -68,8 +68,8 @@ export default function GroupedMarketCard({
           <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug text-ink group-hover:text-white">
             {title}
           </h3>
-          <div className="mt-1.5 flex items-center gap-2 text-xs text-ink-faint">
-            <span className="inline-flex items-center gap-1 rounded-md bg-accent-violet/15 px-1.5 py-0.5 font-medium text-accent-violet">
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/35 bg-brand/12 px-2.5 py-1 text-[11px] font-semibold leading-none text-brand-light">
               <Layers size={11} /> {options.length} options
             </span>
             {status !== "open" && <StatusBadge status={status} />}
@@ -77,7 +77,7 @@ export default function GroupedMarketCard({
         </div>
       </div>
 
-      <div className="relative flex flex-col gap-2">
+      <div className="relative flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
         {top.map((o) => {
           const p = displayPriceYes(o);
           return (
@@ -98,11 +98,12 @@ export default function GroupedMarketCard({
         {more > 0 && <div className="text-xs font-medium text-accent-violet">+{more} more</div>}
       </div>
 
-      <div className="relative mt-auto flex items-center gap-4 text-xs text-ink-faint">
+      <div className="relative mt-auto flex items-center gap-2.5 text-xs text-ink-faint">
         <span className="inline-flex items-center gap-1">
           <BarChart3 size={13} />
           {`$${formatCompact(volume)} vol`}
         </span>
+        <span className="h-3 w-px bg-border" />
         <span className="inline-flex items-center gap-1">
           <Users size={13} />
           {traders} traders

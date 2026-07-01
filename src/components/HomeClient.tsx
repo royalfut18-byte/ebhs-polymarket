@@ -14,6 +14,7 @@ import GroupedMarketCard from "./GroupedMarketCard";
 import CategoryPills from "./CategoryPills";
 import AnnouncementBanner from "./AnnouncementBanner";
 import SeasonResetBanner from "./SeasonResetBanner";
+import FeaturedBanners from "./FeaturedBanners";
 import RecentActivity from "./RecentActivity";
 import { useCategories, useCategoryEmoji } from "./useCategories";
 import { AnimatedNumber, FadeIn, Stagger, StaggerItem, motion } from "./motion";
@@ -38,6 +39,7 @@ export default function HomeClient() {
   const searchParams = useSearchParams();
   const q = (searchParams.get("q") ?? "").trim().toLowerCase();
   const [category, setCategory] = useState("All");
+  const [topSort, setTopSort] = useState(false); // "Top" = sort by volume (most traded)
 
   const marketsQuery = useQuery({ queryKey: ["markets"], queryFn: fetchMarkets });
   const statsQuery = useQuery({ queryKey: ["market-stats"], queryFn: fetchMarketStats });
@@ -129,16 +131,23 @@ export default function HomeClient() {
       });
     }
 
+    const volOf = (it: DisplayItem): number =>
+      it.kind === "single"
+        ? Number(statsMap[it.market.id]?.volume) || 0
+        : it.options.reduce((s, o) => s + (Number(statsMap[o.id]?.volume) || 0), 0);
+
     return list.sort((a, b) => {
+      // "Top" mode: open markets first, then by volume (most traded).
       const sa = a.kind === "single" ? a.market.status : a.status;
       const sb = b.kind === "single" ? b.market.status : b.status;
       const r = (STATUS_RANK[sa] ?? 9) - (STATUS_RANK[sb] ?? 9);
       if (r !== 0) return r;
+      if (topSort) return volOf(b) - volOf(a);
       const ta = a.kind === "single" ? new Date(a.market.created_at).getTime() : a.created;
       const tb = b.kind === "single" ? new Date(b.market.created_at).getTime() : b.created;
       return tb - ta;
     });
-  }, [allMarkets, category, q]);
+  }, [allMarkets, category, q, topSort, statsMap]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -146,53 +155,29 @@ export default function HomeClient() {
       {!q && <AnnouncementBanner />}
       {!q && (
         <FadeIn>
-          <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-white/[0.05] via-white/[0.02] to-transparent p-7 sm:p-10">
-            <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 animate-float rounded-full bg-brand/20 blur-3xl" />
-            <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-accent-violet/15 blur-3xl" />
-            <div
-              className={clsx(
-                "relative grid gap-8",
-                trending && "lg:grid-cols-2"
-              )}
-            >
-              <div className="max-w-2xl">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white/[0.04] px-3 py-1 text-xs font-medium text-ink-dim">
-                  <Sparkles size={13} className="text-brand-light" /> Play-money prediction market
-                </span>
-                <h1 className="mt-4 text-3xl font-bold leading-[1.1] tracking-tight sm:text-5xl">
-                  Predict the future. <br className="hidden sm:block" />
-                  <span className="text-gradient">Win prizes.</span>
-                </h1>
-                <p className="mt-3 max-w-lg text-sm text-ink-dim sm:text-base">
-                  Trade YES/NO on everything happening at EBHS. Prices are live probabilities — your
-                  trades move the market. Climb the leaderboard. 🏆
-                </p>
-                <div className="mt-6 flex flex-wrap items-center gap-3">
-                  <a href="#markets" className="btn btn-primary">
-                    <TrendingUp size={16} /> Browse markets
-                  </a>
-                  <Link href="/suggest" className="btn btn-ghost">
-                    <Lightbulb size={16} /> Suggest a market
-                  </Link>
-                </div>
-                <div className="mt-8 flex gap-8">
-                  <Stat label="Markets" value={totals.markets} />
-                  <Stat label="Volume" value={totals.volume} prefix="$" compact />
-                  <Stat label="Trades" value={totals.trades} />
-                </div>
-              </div>
-
-              {trending && <FeaturedMarket market={trending} stats={statsMap[trending.id]} />}
-            </div>
-          </section>
+          <FeaturedBanners markets={allMarkets} statsMap={statsMap} totals={totals} />
         </FadeIn>
       )}
 
-      <div id="markets" className="scroll-mt-20 flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
+      <div id="markets" className="scroll-mt-20 flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-bold tracking-tight">
             {q ? <>Results for “{q}”</> : "All markets"}
           </h2>
+          {!q && (
+            <button
+              onClick={() => setTopSort((v) => !v)}
+              aria-pressed={topSort}
+              className={clsx(
+                "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors",
+                topSort
+                  ? "bg-brand text-white shadow-[0_6px_18px_-6px_rgba(47,128,255,0.7)]"
+                  : "bg-brand/15 text-brand-light hover:bg-brand/25"
+              )}
+            >
+              <TrendingUp size={14} /> Top
+            </button>
+          )}
         </div>
 
         <CategoryPills active={category} onChange={setCategory} categories={categoryList} />
@@ -204,7 +189,7 @@ export default function HomeClient() {
         ) : items.length === 0 ? (
           <EmptyState />
         ) : (
-          <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <Stagger className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {items.map((it) =>
               it.kind === "single" ? (
                 <StaggerItem key={it.market.id}>
@@ -356,7 +341,7 @@ function Stat({
 
 function Skeletons() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {Array.from({ length: 8 }).map((_, i) => (
         <div key={i} className="card flex flex-col gap-3 p-4">
           <div className="flex gap-3">

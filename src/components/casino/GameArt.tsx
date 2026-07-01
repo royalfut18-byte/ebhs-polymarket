@@ -181,6 +181,32 @@ function Baccarat() {
   );
 }
 
+function Flappy() {
+  return (
+    <svg viewBox="0 0 100 100" className="h-full w-full">
+      {/* pipes */}
+      <g style={SH}>
+        <rect x="72" y="2" width="20" height="30" rx="2" fill="#2f8f2b" />
+        <rect x="69" y="30" width="26" height="8" rx="2" fill="#43b53d" />
+        <rect x="72" y="66" width="20" height="34" rx="2" fill="#2f8f2b" />
+        <rect x="69" y="58" width="26" height="8" rx="2" fill="#43b53d" />
+      </g>
+      {/* clouds */}
+      <circle cx="18" cy="16" r="7" fill="#fff" opacity="0.7" />
+      <circle cx="27" cy="18" r="6" fill="#fff" opacity="0.7" />
+      {/* bird */}
+      <g style={SH} transform="translate(30 52) rotate(-10)">
+        <ellipse cx="0" cy="0" rx="20" ry="17" fill="#fde047" />
+        <path d="M-4 6 a14 8 0 0 0 20 0 a14 10 0 0 1 -20 0 Z" fill="#fbbf24" />
+        <path d="M-6 -2 q-12 -5 -18 3 q9 5 18 2 Z" fill="#fff" />
+        <circle cx="9" cy="-6" r="6.5" fill="#fff" />
+        <circle cx="11" cy="-6" r="3" fill="#111" />
+        <path d="M18 -1 l13 3 l-13 5 Z" fill="#ff8a2a" />
+      </g>
+    </svg>
+  );
+}
+
 const ART: Record<CasinoGame, () => React.ReactElement> = {
   dice: Dice,
   mines: Mines,
@@ -191,6 +217,7 @@ const ART: Record<CasinoGame, () => React.ReactElement> = {
   blackjack: Blackjack,
   roulette: Roulette,
   baccarat: Baccarat,
+  flappy: Flappy,
 };
 
 export default function GameArt({ game }: { game: CasinoGame }) {

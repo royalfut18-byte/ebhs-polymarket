@@ -7,7 +7,8 @@ import Providers from "@/components/Providers";
 import Navbar from "@/components/Navbar";
 import ConfigBanner from "@/components/ConfigBanner";
 import SupportWidget from "@/components/SupportWidget";
-import AdsterraSidebar from "@/components/AdsterraSidebar";
+import IntroSplash from "@/components/IntroSplash";
+import SeasonShowcase from "@/components/SeasonShowcase";
 import AppGate from "@/components/AppGate";
 
 const inter = Inter({
@@ -26,13 +27,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={inter.variable}>
       <body>
+        <IntroSplash />
+        <SeasonShowcase />
         <Providers>
           <div className="flex min-h-screen flex-col">
             <Suspense fallback={<div className="h-16 border-b border-border" />}>
               <Navbar />
             </Suspense>
             <ConfigBanner />
-            <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 min-[1200px]:pr-[200px]">
+            <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
               <AppGate>{children}</AppGate>
             </main>
             <footer className="mt-10 border-t border-border px-4 py-8 text-center text-xs text-ink-faint">
@@ -41,7 +44,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </footer>
           </div>
           <SupportWidget />
-          <AdsterraSidebar />
         </Providers>
         <Analytics />
       </body>

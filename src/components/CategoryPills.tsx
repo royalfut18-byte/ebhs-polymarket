@@ -33,7 +33,7 @@ export default function CategoryPills({
             {isActive && (
               <motion.span
                 layoutId="catPill"
-                className="absolute inset-0 rounded-full bg-brand-gradient shadow-[0_6px_18px_-6px_rgba(91,124,250,0.7)]"
+                className="absolute inset-0 rounded-full bg-brand-gradient shadow-[0_6px_18px_-6px_rgba(47,128,255,0.7)]"
                 transition={{ type: "spring", stiffness: 420, damping: 34 }}
               />
             )}
