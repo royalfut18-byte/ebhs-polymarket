@@ -7,6 +7,7 @@ import Providers from "@/components/Providers";
 import Navbar from "@/components/Navbar";
 import ConfigBanner from "@/components/ConfigBanner";
 import SupportWidget from "@/components/SupportWidget";
+import IntroSplash from "@/components/IntroSplash";
 import AppGate from "@/components/AppGate";
 
 const inter = Inter({
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={inter.variable}>
       <body>
+        <IntroSplash />
         <Providers>
           <div className="flex min-h-screen flex-col">
             <Suspense fallback={<div className="h-16 border-b border-border" />}>
