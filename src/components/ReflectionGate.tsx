@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Lock, PartyPopper, RotateCw } from "lucide-react";
+import { Loader2, Lock, PartyPopper, RotateCw, Volume2 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase/client";
 import { useAuth } from "./AuthProvider";
 import { useAnyRoundActive } from "@/lib/casino/roundSignal";
@@ -76,6 +76,9 @@ export default function ReflectionGate() {
   const [now, setNow] = useState(Date.now());
   // Server-tracked ACTUAL watched seconds (only accrues while the video plays).
   const [watched, setWatched] = useState(0);
+  // Mobile blocks unmuted autoplay, so we fall back to MUTED autoplay (still
+  // counts as watching) and show a tap-to-unmute button.
+  const [needsSound, setNeedsSound] = useState(false);
 
   const locked = !!data?.locked;
   const used = data?.used ?? 0;
@@ -108,27 +111,59 @@ export default function ReflectionGate() {
   function tryPlay() {
     const v = vidRef.current;
     if (!v || startedRef.current) return;
+    // 1. Try to autoplay WITH sound (works on desktop / after a prior gesture).
     v.muted = false;
     v.volume = 1;
     v.play()
       .then(() => {
         startedRef.current = true;
+        setNeedsSound(false);
       })
       .catch(() => {
-        const resume = () => {
-          const vv = vidRef.current;
-          if (!vv || startedRef.current) return;
-          vv.muted = false;
-          vv.volume = 1;
-          vv.play()
-            .then(() => {
-              startedRef.current = true;
-            })
-            .catch(() => {});
-        };
-        window.addEventListener("pointerdown", resume, { once: true });
-        window.addEventListener("keydown", resume, { once: true });
+        // 2. Blocked (mobile). Autoplay MUTED so the video isn't stuck and watch
+        //    time still accrues — then offer a one-tap "sound on".
+        const vv = vidRef.current;
+        if (!vv) return;
+        vv.muted = true;
+        vv.play()
+          .then(() => {
+            startedRef.current = true;
+            setNeedsSound(true);
+          })
+          .catch(() => {
+            // 3. Even muted autoplay blocked — start on the very next tap/key.
+            const resume = () => {
+              const el = vidRef.current;
+              if (!el || startedRef.current) return;
+              el.muted = false;
+              el.volume = 1;
+              el.play()
+                .then(() => {
+                  startedRef.current = true;
+                  setNeedsSound(false);
+                })
+                .catch(() => {
+                  el.muted = true;
+                  el.play().then(() => {
+                    startedRef.current = true;
+                    setNeedsSound(true);
+                  }).catch(() => {});
+                });
+            };
+            window.addEventListener("pointerdown", resume, { once: true });
+            window.addEventListener("keydown", resume, { once: true });
+          });
       });
+  }
+
+  // One-tap unmute (the video is already playing muted at this point).
+  function enableSound() {
+    const v = vidRef.current;
+    if (!v) return;
+    v.muted = false;
+    v.volume = 1;
+    v.play().catch(() => {});
+    setNeedsSound(false);
   }
 
   // New lock episode: reset the player and auto-start (fixes being stuck on a
@@ -142,6 +177,7 @@ export default function ReflectionGate() {
     maxRef.current = 0;
     startedRef.current = false;
     setWatched(0);
+    setNeedsSound(false);
     const v = vidRef.current;
     if (v) {
       try {
@@ -321,6 +357,17 @@ export default function ReflectionGate() {
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 text-white">
                   <Loader2 size={28} className="animate-spin" />
                 </div>
+              )}
+              {needsSound && !loadError && (
+                <button
+                  onClick={enableSound}
+                  className="absolute inset-0 flex items-center justify-center bg-black/25"
+                  aria-label="Turn on sound"
+                >
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2.5 text-sm font-bold text-white shadow-lg backdrop-blur-sm">
+                    <Volume2 size={17} /> Tap for sound
+                  </span>
+                </button>
               )}
               {loadError && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70 px-6 text-center text-white">
