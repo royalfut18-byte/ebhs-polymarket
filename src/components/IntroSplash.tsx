@@ -7,27 +7,27 @@ const wordmark = "EB Poly";
 
 const container = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.06, delayChildren: 0.15 } },
+  show: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } },
 };
 const letterV = {
-  hidden: { y: 70, opacity: 0, rotateX: -90, filter: "blur(6px)" },
+  hidden: { y: 60, opacity: 0, rotateX: -80 },
   show: {
     y: 0,
     opacity: 1,
     rotateX: 0,
-    filter: "blur(0px)",
-    transition: { type: "spring", stiffness: 220, damping: 16 },
+    transition: { type: "spring", stiffness: 240, damping: 18 },
   },
 } as const;
 
-// One-time Season 2 intro. Plays once per tab session, over everything.
+// One-time Season 2 intro. Plays once per tab session.
+// Perf: transform + opacity only (composited) — no animated blur/width/height.
 export default function IntroSplash() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
     if (sessionStorage.getItem("ebpoly_intro_s2") === "1") return;
     setShow(true);
-    const t = setTimeout(dismiss, 3200);
+    const t = setTimeout(dismiss, 2800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -44,38 +44,27 @@ export default function IntroSplash() {
           key="intro"
           onClick={dismiss}
           className="fixed inset-0 z-[9999] flex cursor-pointer flex-col items-center justify-center overflow-hidden bg-[#070f1e]"
-          exit={{ opacity: 0, scale: 1.14, filter: "blur(12px)", transition: { duration: 0.7, ease: [0.7, 0, 0.3, 1] } }}
+          exit={{ opacity: 0, scale: 1.08, transition: { duration: 0.6, ease: "easeInOut" } }}
         >
-          {/* subtle grid */}
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.15]"
+          {/* glow — radial gradient scaled via transform (no filter = smooth) */}
+          <motion.div
+            className="pointer-events-none absolute h-[36rem] w-[36rem] rounded-full"
             style={{
-              backgroundImage:
-                "linear-gradient(rgba(47,128,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(47,128,255,0.4) 1px, transparent 1px)",
-              backgroundSize: "44px 44px",
-              maskImage: "radial-gradient(circle at 50% 45%, black, transparent 70%)",
+              background: "radial-gradient(circle, rgba(47,128,255,0.5), rgba(47,128,255,0) 65%)",
+              willChange: "transform, opacity",
             }}
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1.1, opacity: 1 }}
+            transition={{ duration: 1.4, ease: "easeOut" }}
           />
 
-          {/* glows */}
+          {/* expanding ring via scale (transform, not width/height) */}
           <motion.div
-            className="pointer-events-none absolute h-[42rem] w-[42rem] rounded-full bg-brand/25 blur-[120px]"
-            initial={{ scale: 0.6, opacity: 0 }}
-            animate={{ scale: [0.6, 1.1, 0.9], opacity: [0, 0.85, 0.5] }}
-            transition={{ duration: 2.6, ease: "easeInOut" }}
-          />
-          <motion.div
-            className="pointer-events-none absolute -bottom-40 right-10 h-[30rem] w-[30rem] rounded-full bg-cyan-500/20 blur-[120px]"
-            animate={{ scale: [1, 1.35, 1], opacity: [0.25, 0.6, 0.25] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          />
-
-          {/* expanding ring */}
-          <motion.div
-            className="pointer-events-none absolute rounded-full border border-brand/40"
-            initial={{ width: 0, height: 0, opacity: 0.7 }}
-            animate={{ width: 760, height: 760, opacity: 0 }}
-            transition={{ duration: 2.1, ease: "easeOut", delay: 0.35 }}
+            className="pointer-events-none absolute h-64 w-64 rounded-full border border-brand/50"
+            style={{ willChange: "transform, opacity" }}
+            initial={{ scale: 0.2, opacity: 0.7 }}
+            animate={{ scale: 3, opacity: 0 }}
+            transition={{ duration: 1.8, ease: "easeOut", delay: 0.2 }}
           />
 
           {/* wordmark + badge */}
@@ -91,49 +80,43 @@ export default function IntroSplash() {
                 <motion.span
                   key={i}
                   variants={letterV}
+                  style={{ willChange: "transform, opacity" }}
                   className={
                     ch === " "
                       ? "inline-block w-4 sm:w-7"
-                      : "inline-block bg-gradient-to-b from-white via-white to-brand-light bg-clip-text text-transparent drop-shadow-[0_0_34px_rgba(47,128,255,0.55)]"
+                      : "inline-block bg-gradient-to-b from-white to-brand-light bg-clip-text text-transparent"
                   }
                 >
-                  {ch === " " ? " " : ch}
+                  {ch === " " ? " " : ch}
                 </motion.span>
               ))}
             </motion.div>
 
             <motion.div
-              initial={{ scale: 0.3, opacity: 0, y: 22 }}
+              initial={{ scale: 0.4, opacity: 0, y: 18 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ delay: 0.85, type: "spring", stiffness: 200, damping: 13 }}
-              className="relative mt-5 overflow-hidden rounded-full border border-brand/40 bg-brand/15 px-6 py-2 shadow-[0_0_30px_-6px_rgba(47,128,255,0.6)] backdrop-blur"
+              transition={{ delay: 0.7, type: "spring", stiffness: 220, damping: 15 }}
+              className="relative mt-5 overflow-hidden rounded-full border border-brand/40 bg-brand/15 px-6 py-2"
             >
               <span className="text-sm font-black uppercase tracking-[0.35em] text-brand-light sm:text-lg">
                 Season&nbsp;2
               </span>
-              {/* shine sweep across the badge */}
+              {/* shine sweep (transform x only) */}
               <motion.div
-                className="absolute inset-0 -skew-x-12 bg-gradient-to-r from-transparent via-white/45 to-transparent"
-                initial={{ x: "-130%" }}
-                animate={{ x: "130%" }}
-                transition={{ delay: 1.4, duration: 0.9, ease: "easeInOut" }}
+                className="absolute inset-0 -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                style={{ willChange: "transform" }}
+                initial={{ x: "-140%" }}
+                animate={{ x: "140%" }}
+                transition={{ delay: 1.2, duration: 0.85, ease: "easeInOut" }}
               />
             </motion.div>
           </div>
 
-          {/* big light sweep over the whole lockup */}
-          <motion.div
-            className="pointer-events-none absolute h-56 w-28 rotate-12 bg-gradient-to-r from-transparent via-white/20 to-transparent blur-2xl"
-            initial={{ x: -460, opacity: 0 }}
-            animate={{ x: 460, opacity: [0, 1, 0] }}
-            transition={{ delay: 1.15, duration: 1.1, ease: "easeInOut" }}
-          />
-
           <motion.div
             className="absolute bottom-10 text-xs font-medium uppercase tracking-[0.3em] text-ink-faint"
             initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.8] }}
-            transition={{ delay: 1.8, duration: 0.6 }}
+            animate={{ opacity: 0.7 }}
+            transition={{ delay: 1.6, duration: 0.5 }}
           >
             Tap to enter
           </motion.div>

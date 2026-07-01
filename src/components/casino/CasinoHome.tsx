@@ -17,8 +17,8 @@ import clsx from "clsx";
 // ---- left sidebar ----------------------------------------------------------
 function Sidebar() {
   return (
-    <aside className="hidden w-52 shrink-0 lg:block">
-      <div className="sticky top-20 flex flex-col gap-4">
+    <aside className="sticky top-20 hidden max-h-[calc(100vh-6rem)] w-52 shrink-0 self-start overflow-y-auto lg:block">
+      <div className="flex flex-col gap-4">
         <div className="flex rounded-xl bg-bg-soft p-1">
           <span className="flex-1 rounded-lg bg-brand py-1.5 text-center text-sm font-bold text-white">Casino</span>
           <Link href="/arena" className="flex-1 rounded-lg py-1.5 text-center text-sm font-bold text-ink-dim hover:text-ink">
