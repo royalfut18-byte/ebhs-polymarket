@@ -2,18 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Gentle float for the Season 2 reel medallion. CSS (not framer) so the
-   infinite loop never blocks AnimatePresence exit detection. Transform only. */
-@keyframes s2-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
 @layer base {
   html,
   body {
