@@ -49,8 +49,8 @@ function HeroPanel({ totals }: { totals: { markets: number; volume: number; trad
 function HeroStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="leading-none">
-      <div className="text-[15px] font-black tabular-nums">{value}</div>
-      <div className="mt-1 text-[9px] font-semibold uppercase tracking-wider text-white/60">{label}</div>
+      <div className="text-lg font-black tabular-nums sm:text-xl">{value}</div>
+      <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-white/60">{label}</div>
     </div>
   );
 }
